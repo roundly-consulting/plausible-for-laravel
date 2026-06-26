@@ -1,0 +1,16 @@
+{
+    "sites": [
+        {
+            "domain": "lorem.test",
+            "timezone": "Etc/UTC"
+        },
+        {
+            "domain": "ipsum.test",
+            "timezone": "Europe/Bratislava"
+        }
+    ],
+    "meta": {
+        "after": null,
+        "before": null
+    }
+}
