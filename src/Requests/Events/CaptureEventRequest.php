@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Plausible\Requests\Events;
 
+use RoundlyConsulting\Plausible\DataTransferObjects\Revenue;
 use RoundlyConsulting\Plausible\Requests\Query;
 
 final class CaptureEventRequest
@@ -17,6 +18,8 @@ final class CaptureEventRequest
         public readonly string $name = 'pageview',
         public readonly ?string $referrer = null,
         public readonly array $props = [],
+        public readonly ?Revenue $revenue = null,
+        public readonly bool $interactive = true,
     ) {}
 
     /**
@@ -28,8 +31,10 @@ final class CaptureEventRequest
         string $name = 'pageview',
         ?string $referrer = null,
         array $props = [],
+        ?Revenue $revenue = null,
+        bool $interactive = true,
     ): self {
-        return new self($site, $url, $name, $referrer, $props);
+        return new self($site, $url, $name, $referrer, $props, $revenue, $interactive);
     }
 
     public function hasCustomProps(): bool
@@ -42,6 +47,11 @@ final class CaptureEventRequest
         return ! is_null($this->referrer);
     }
 
+    public function hasRevenue(): bool
+    {
+        return $this->revenue instanceof Revenue;
+    }
+
     public function toQuery(): Query
     {
         return Query::make()
@@ -49,6 +59,8 @@ final class CaptureEventRequest
             ->set('name', $this->name)
             ->set('url', $this->url)
             ->when($this->hasReferrer(), 'referrer', $this->referrer)
-            ->when($this->hasCustomProps(), 'props', $this->props);
+            ->when($this->hasCustomProps(), 'props', $this->props)
+            ->when($this->hasRevenue(), 'revenue', fn (): array => $this->revenue?->toArray() ?? [])
+            ->when(! $this->interactive, 'interactive', false);
     }
 }
