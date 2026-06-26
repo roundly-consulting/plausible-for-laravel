@@ -1,0 +1,8 @@
+parameters:
+    level: 7
+    paths:
+        - src
+        - config
+    checkOctaneCompatibility: true
+    configDirectories:
+        - config

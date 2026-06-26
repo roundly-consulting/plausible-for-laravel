@@ -1,0 +1,28 @@
+{
+    "results": {
+        "bounce_rate": {
+            "change": 50,
+            "value": 10
+        },
+        "events": {
+            "change": 10,
+            "value": 410
+        },
+        "pageviews": {
+            "change": -38,
+            "value": 4103
+        },
+        "visit_duration": {
+            "change": -80,
+            "value": 231
+        },
+        "visitors": {
+            "change": 30,
+            "value": 2001
+        },
+        "visits": {
+            "change": 21,
+            "value": 4103
+        }
+    }
+}
