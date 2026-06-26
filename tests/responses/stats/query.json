@@ -1,0 +1,19 @@
+{
+    "results": [
+        {
+            "metrics": [100, 0.5],
+            "dimensions": ["/blog"]
+        },
+        {
+            "metrics": [50, 0.3],
+            "dimensions": ["/about"]
+        }
+    ],
+    "meta": {
+        "imports_included": false
+    },
+    "query": {
+        "site_id": "localhost",
+        "metrics": ["visitors", "bounce_rate"]
+    }
+}

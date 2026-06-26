@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Http;
 use RoundlyConsulting\Plausible\Requests\Stats\AggregateRequest;
 use RoundlyConsulting\Plausible\Requests\Stats\BreakdownRequest;
 use RoundlyConsulting\Plausible\Requests\Stats\TimeseriesRequest;
@@ -13,6 +14,11 @@ it('returns realtime visitors count', function () {
     $visitors = plausible()->stats()->realtime('localhost');
 
     expect($visitors)->toBe(10);
+
+    Http::assertSent(
+        fn ($request) => str_contains($request->url(), '/api/v1/stats/realtime/visitors')
+            && $request['site_id'] === 'localhost',
+    );
 });
 
 it('returns aggregated metrics using filters', function () {
@@ -37,6 +43,14 @@ it('returns aggregated metrics using filters', function () {
         ));
 
     expect($metrics)->toBeInstanceOf(Response::class);
+
+    Http::assertSent(
+        fn ($request) => str_contains($request->url(), '/api/v1/stats/aggregate')
+            && $request['metrics'] === 'visitors,pageviews,bounce_rate,visit_duration,events,visits'
+            && $request['period'] === 'custom'
+            && $request['compare'] === 'previous_period'
+            && str_contains((string) $request['date'], ','),
+    );
 });
 
 it('returns timeseries', function () {
@@ -49,6 +63,12 @@ it('returns timeseries', function () {
         ));
 
     expect($metrics)->toBeInstanceOf(Response::class);
+
+    Http::assertSent(
+        fn ($request) => str_contains($request->url(), '/api/v1/stats/timeseries')
+            && $request['interval'] === 'date'
+            && $request['period'] === '30d',
+    );
 });
 
 it('returns breakdown', function () {
@@ -62,4 +82,10 @@ it('returns breakdown', function () {
         ));
 
     expect($metrics)->toBeInstanceOf(Response::class);
+
+    Http::assertSent(
+        fn ($request) => str_contains($request->url(), '/api/v1/stats/breakdown')
+            && $request['property'] === 'event:page'
+            && $request['limit'] === 100,
+    );
 });
