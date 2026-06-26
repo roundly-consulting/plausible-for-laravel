@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Plausible\Repositories;
 
+use Illuminate\Bus\Batch;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Bus;
 use RoundlyConsulting\Plausible\Exceptions\MissingConfiguration;
 use RoundlyConsulting\Plausible\Exceptions\UniqueVisitorIdentifierRequired;
 use RoundlyConsulting\Plausible\Jobs\CaptureEventJob;
@@ -68,6 +70,44 @@ class EventsRepository extends Repository
         }
 
         CaptureEventJob::dispatch($request, $this->visitorUserAgent, $this->visitorIpAddress);
+    }
+
+    /**
+     * Capture many events synchronously, returning each response in order.
+     *
+     * @param  iterable<CaptureEventRequest>  $events
+     * @return list<Response>
+     */
+    public function captureMany(iterable $events): array
+    {
+        $responses = [];
+
+        foreach ($events as $event) {
+            $responses[] = $this->capture($event);
+        }
+
+        return $responses;
+    }
+
+    /**
+     * Capture many events on the queue as a single batch — ideal for bulk or
+     * historical imports.
+     *
+     * @param  iterable<CaptureEventRequest>  $events
+     */
+    public function captureManyQueued(iterable $events): Batch
+    {
+        if (is_null($this->visitorUserAgent) || is_null($this->visitorIpAddress)) {
+            throw UniqueVisitorIdentifierRequired::error();
+        }
+
+        $jobs = [];
+
+        foreach ($events as $event) {
+            $jobs[] = new CaptureEventJob($event, $this->visitorUserAgent, $this->visitorIpAddress);
+        }
+
+        return Bus::batch($jobs)->name('plausible:capture')->dispatch();
     }
 
     protected function request(): PendingRequest
