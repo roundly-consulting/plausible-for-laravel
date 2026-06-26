@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Plausible\Exceptions;
 
-use Exception;
-
-final class UniqueVisitorIdentifierRequired extends Exception
+final class UniqueVisitorIdentifierRequired extends PlausibleException
 {
     public static function error(): self
     {
