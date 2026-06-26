@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Plausible\Results;
 
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Collection;
 use RoundlyConsulting\Plausible\Enums\Metric;
 use RoundlyConsulting\Plausible\Support\Value;
 
@@ -42,6 +43,17 @@ final readonly class AggregateResult
     public function has(string|Metric $metric): bool
     {
         return array_key_exists(Value::of($metric), $this->results);
+    }
+
+    /**
+     * Each requested metric mapped to its value, as a collection.
+     *
+     * @return Collection<string, float|int>
+     */
+    public function collect(): Collection
+    {
+        return (new Collection($this->results))
+            ->map(static fn (array $entry): float|int => $entry['value'] ?? 0);
     }
 
     public function response(): Response
