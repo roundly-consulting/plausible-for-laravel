@@ -1,0 +1,16 @@
+{
+    "goals": [
+        {
+            "id": 42,
+            "goal_type": "event",
+            "event_name": "Signup",
+            "page_path": null
+        },
+        {
+            "id": 43,
+            "goal_type": "page",
+            "event_name": null,
+            "page_path": "/checkout"
+        }
+    ]
+}

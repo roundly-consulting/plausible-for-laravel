@@ -8,9 +8,13 @@ use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Assert;
 use RoundlyConsulting\Plausible\Plausible;
 use RoundlyConsulting\Plausible\Repositories\EventsRepository;
+use RoundlyConsulting\Plausible\Repositories\GoalsRepository;
+use RoundlyConsulting\Plausible\Repositories\SharedLinksRepository;
 use RoundlyConsulting\Plausible\Repositories\SitesRepository;
 use RoundlyConsulting\Plausible\Repositories\StatsRepository;
 use RoundlyConsulting\Plausible\Requests\Events\CaptureEventRequest;
+use RoundlyConsulting\Plausible\Requests\Sites\CreateGoalRequest;
+use RoundlyConsulting\Plausible\Requests\Sites\CreateSharedLinkRequest;
 use RoundlyConsulting\Plausible\Requests\Sites\CreateSiteRequest;
 use RoundlyConsulting\Plausible\Requests\Sites\UpdateSiteRequest;
 
@@ -39,6 +43,15 @@ final class PlausibleFake extends Plausible
 
     /** @var list<UpdateSiteRequest> */
     private array $sitesUpdated = [];
+
+    /** @var list<CreateGoalRequest> */
+    private array $goalsCreated = [];
+
+    /** @var list<string> */
+    private array $goalsDeleted = [];
+
+    /** @var list<CreateSharedLinkRequest> */
+    private array $sharedLinksCreated = [];
 
     public function __construct()
     {
@@ -70,6 +83,16 @@ final class PlausibleFake extends Plausible
         return new FakeSitesRepository($this);
     }
 
+    public function goals(): GoalsRepository
+    {
+        return new FakeGoalsRepository($this);
+    }
+
+    public function sharedLinks(): SharedLinksRepository
+    {
+        return new FakeSharedLinksRepository($this);
+    }
+
     public function recordEvent(CaptureEventRequest $request): void
     {
         $this->capturedEvents[] = $request;
@@ -93,6 +116,21 @@ final class PlausibleFake extends Plausible
     public function recordSiteUpdated(UpdateSiteRequest $request): void
     {
         $this->sitesUpdated[] = $request;
+    }
+
+    public function recordGoalCreated(CreateGoalRequest $request): void
+    {
+        $this->goalsCreated[] = $request;
+    }
+
+    public function recordGoalDeleted(string $site, int|string $goalId): void
+    {
+        $this->goalsDeleted[] = $site.'|'.$goalId;
+    }
+
+    public function recordSharedLinkCreated(CreateSharedLinkRequest $request): void
+    {
+        $this->sharedLinksCreated[] = $request;
     }
 
     public function assertEventCaptured(?callable $filter = null): void
@@ -191,6 +229,45 @@ final class PlausibleFake extends Plausible
             $domain,
             array_map(static fn (UpdateSiteRequest $request): string => $request->site, $this->sitesUpdated),
             "Expected site [{$domain}] to be updated, but it was not.",
+        );
+    }
+
+    public function assertGoalCreated(?string $site = null): void
+    {
+        if ($site === null) {
+            Assert::assertNotEmpty($this->goalsCreated, 'Expected a goal to be created, but none were.');
+
+            return;
+        }
+
+        Assert::assertContains(
+            $site,
+            array_map(static fn (CreateGoalRequest $request): string => $request->site, $this->goalsCreated),
+            "Expected a goal to be created for site [{$site}], but none was.",
+        );
+    }
+
+    public function assertGoalDeleted(string $site, int|string $goalId): void
+    {
+        Assert::assertContains(
+            $site.'|'.$goalId,
+            $this->goalsDeleted,
+            "Expected goal [{$goalId}] on site [{$site}] to be deleted, but it was not.",
+        );
+    }
+
+    public function assertSharedLinkCreated(?string $site = null): void
+    {
+        if ($site === null) {
+            Assert::assertNotEmpty($this->sharedLinksCreated, 'Expected a shared link to be created, but none were.');
+
+            return;
+        }
+
+        Assert::assertContains(
+            $site,
+            array_map(static fn (CreateSharedLinkRequest $request): string => $request->site, $this->sharedLinksCreated),
+            "Expected a shared link to be created for site [{$site}], but none was.",
         );
     }
 }
