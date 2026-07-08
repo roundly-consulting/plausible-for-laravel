@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Plausible\Enums;
 
+use Illuminate\Support\Str;
+use RoundlyConsulting\Enums\Helpers;
+
 /**
  * Dimensions accepted by the Stats v2 `/api/v2/query` endpoint. Includes the
  * `time:*` bucket dimensions used in place of the legacy `interval` parameter.
@@ -11,6 +14,8 @@ namespace RoundlyConsulting\Plausible\Enums;
  */
 enum Dimension: string
 {
+    use Helpers;
+
     case EventName = 'event:name';
     case EventPage = 'event:page';
     case EventHostname = 'event:hostname';
@@ -44,5 +49,15 @@ enum Dimension: string
     public static function custom(string $property): string
     {
         return 'event:props:'.$property;
+    }
+
+    /**
+     * The wire values are compound `ns:field` colon tokens that headline poorly,
+     * so derive the display label from the case name. Wire `value`, `values()`,
+     * and `custom()` still emit the raw API strings.
+     */
+    public function readable(): string
+    {
+        return (string) __(Str::headline($this->name));
     }
 }

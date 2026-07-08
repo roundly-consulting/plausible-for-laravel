@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Plausible\Enums;
 
+use Illuminate\Support\Str;
+use RoundlyConsulting\Enums\Helpers;
+
 /**
  * Properties you can break stats down by on the legacy `/api/v1/stats/breakdown`
  * endpoint. For a custom event property use {@see Property::custom()} which
@@ -11,6 +14,8 @@ namespace RoundlyConsulting\Plausible\Enums;
  */
 enum Property: string
 {
+    use Helpers;
+
     case EventName = 'event:name';
     case EventPage = 'event:page';
     case EventHostname = 'event:hostname';
@@ -39,5 +44,15 @@ enum Property: string
     public static function custom(string $property): string
     {
         return 'event:props:'.$property;
+    }
+
+    /**
+     * The wire values are compound `ns:field` colon tokens that headline poorly,
+     * so derive the display label from the case name. Wire `value`, `values()`,
+     * and `custom()` still emit the raw API strings.
+     */
+    public function readable(): string
+    {
+        return (string) __(Str::headline($this->name));
     }
 }

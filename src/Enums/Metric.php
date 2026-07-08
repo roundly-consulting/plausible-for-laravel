@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Plausible\Enums;
 
+use RoundlyConsulting\Enums\Helpers;
+
 /**
  * Metrics Plausible can report. Backed by the exact keys the Stats API expects,
  * so a {@see Metric} case is interchangeable with its raw string anywhere a
@@ -11,6 +13,8 @@ namespace RoundlyConsulting\Plausible\Enums;
  */
 enum Metric: string
 {
+    use Helpers;
+
     case Visitors = 'visitors';
     case Visits = 'visits';
     case Pageviews = 'pageviews';

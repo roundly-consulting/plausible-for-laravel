@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Plausible\Enums;
 
+use RoundlyConsulting\Enums\Helpers;
+
 /**
  * Operators for the array-style filters used by the Stats v2 `/api/v2/query`
  * endpoint, e.g. `['is', 'visit:browser', ['Chrome']]`.
  */
 enum FilterOperator: string
 {
+    use Helpers;
+
     case Is = 'is';
     case IsNot = 'is_not';
     case Contains = 'contains';
