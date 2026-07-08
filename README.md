@@ -18,6 +18,23 @@ strongly-typed request API — no manual HTTP plumbing required.
 - Laravel `^12.0` or `^13.0`
 - A Plausible account (Cloud or self-hosted) and an API key
 
+## Integrates with
+
+This package builds on two other roundly-consulting packages (hard `require`d — installed
+automatically):
+
+- **[enums-for-laravel](https://github.com/roundly-consulting/enums-for-laravel)** — the query
+  enums (`Metric`, `Interval`, `GoalType`, `FilterOperator`, `Period`, `Dimension`, `Property`)
+  gain the full `Helpers` surface: `values()`, `labels()`, `options()`, `toOptions()`,
+  `validationRule()`, name/label lookups, and `is()`/`when*` helpers. See [Enums](#enums).
+- **[http-client-rate-limits-for-laravel](https://github.com/roundly-consulting/http-client-rate-limits-for-laravel)**
+  — every outbound surface (Stats, Events, Sites) is paced through a client-side rate limiter with
+  server-authoritative adaptive backoff off Plausible's `429 Retry-After`. See
+  [Rate limiting](#rate-limiting).
+
+> While these packages are pre-Packagist they are wired by local path + private VCS in
+> `composer.json`; nothing extra to install.
+
 ## Installation
 
 Install the package via Composer:
@@ -57,6 +74,12 @@ return [
         'sleep_ms' => (int) env('PLAUSIBLE_RETRY_SLEEP', 100),
     ],
 
+    'rate_limits' => [
+        'stats'  => [ /* enabled, owner, limit, per, adaptive, max_wait, jitter, per_site */ ],
+        'events' => [ /* ... */ ],
+        'sites'  => [ /* ... */ ],
+    ],
+
     'tracking' => [
         'queue' => (bool) env('PLAUSIBLE_TRACKING_QUEUE', true),
         'user_agent' => env('PLAUSIBLE_TRACKING_USER_AGENT', 'PlausibleForLaravel'),
@@ -78,6 +101,7 @@ return [
 | `timeout`               | `int`     | `10`                               | `PLAUSIBLE_TIMEOUT`          | Per-request timeout in seconds. |
 | `retry.times`           | `int`     | `0`                                | `PLAUSIBLE_RETRY_TIMES`      | Number of automatic retries on transient failures. `0` disables retries. |
 | `retry.sleep_ms`        | `int`     | `100`                              | `PLAUSIBLE_RETRY_SLEEP`      | Milliseconds to wait between retries. |
+| `rate_limits.*`         | `array`   | see [Rate limiting](#rate-limiting)| `PLAUSIBLE_*_RATELIMIT*`     | Per-surface client-side rate limiting for `stats`, `events`, and `sites`. |
 | `tracking.queue`        | `bool`    | `true`                             | `PLAUSIBLE_TRACKING_QUEUE`   | Queue captures from the middleware / `Trackable` trait so they never block the response. |
 | `tracking.user_agent`   | `string`  | `PlausibleForLaravel`              | `PLAUSIBLE_TRACKING_USER_AGENT` | User-agent used for server-side captures when no HTTP request is in scope. |
 | `tracking.ip_address`   | `string`  | `127.0.0.1`                        | `PLAUSIBLE_TRACKING_IP`      | IP used for server-side captures when no HTTP request is in scope. |
@@ -489,6 +513,79 @@ Type-safe, discoverable parameters live under `RoundlyConsulting\Plausible\Enums
 `FilterOperator` (v2) and `GoalType`. For a custom event property use `Property::custom('plan')` or
 `Dimension::custom('plan')`, which return the `event:props:plan` string. Anywhere an enum is
 accepted, the equivalent string still works.
+
+Via [enums-for-laravel](https://github.com/roundly-consulting/enums-for-laravel), every one of
+these enums carries the `Helpers` surface — handy when building dashboards, pickers, or
+validating a chosen parameter:
+
+```php
+use RoundlyConsulting\Plausible\Enums\Metric;
+use RoundlyConsulting\Plausible\Enums\Period;
+
+Metric::values();            // ['visitors', 'visits', 'pageviews', …] — the raw wire keys
+Metric::validationRule();    // 'in:visitors,visits,pageviews,…' for request validation
+Period::toOptions();         // ['day' => 'Day', '7d' => 'Seven Days', …] for a <select>
+Period::options();           // list of {value, label, name} DTOs for JS/Inertia
+Period::fromName('SixMonths'); // Period::SixMonths
+```
+
+**Labels vs wire values.** `value`/`values()`/`validationRule()`/`custom()` always emit the raw
+API strings. Only the *display* label differs: `Metric`, `Interval`, `GoalType`, and
+`FilterOperator` get clean value-based labels (`views_per_visit` → "Views Per Visit"), while
+`Period`, `Dimension`, and `Property` — whose values are numeric abbreviations (`7d`) or compound
+`ns:field` tokens (`event:name`) — derive their label from the case name instead
+(`Period::SevenDays->readable()` → "Seven Days", `Dimension::EventName->readable()` → "Event Name").
+
+### Rate limiting
+
+Every outbound call is paced through
+[http-client-rate-limits](https://github.com/roundly-consulting/http-client-rate-limits-for-laravel)
+so you proactively stay under Plausible's quotas instead of hammering the API and eating `429`s.
+Three independent buckets — **`stats`** (query API), **`events`** (ingestion), and **`sites`**
+(provisioning: sites, goals, shared links) — each keyed
+`plausible:{surface}:{owner}:{host}[:{site}]`.
+
+Configure each bucket under `plausible.rate_limits.{surface}`:
+
+| Key        | Type      | Stats default | Events default | Sites default | Description |
+|------------|-----------|---------------|----------------|---------------|-------------|
+| `enabled`  | `bool`    | `true`        | `true`         | `true`        | `false` runs the plain client with no limiter. |
+| `owner`    | `string`  | `app`         | `app`          | `app`         | Folds several app instances sharing one API key into one window (`PLAUSIBLE_RATELIMIT_OWNER`). |
+| `limit`    | `int`     | `600`         | `6000`         | `60`          | Max requests per `per` window. |
+| `per`      | `string`  | `hour`        | `minute`       | `hour`        | Window size: `second`\|`minute`\|`hour`\|`day`. |
+| `adaptive` | `bool`    | `true`        | `true`         | `true`        | Honour Plausible's `429 Retry-After` for server-authoritative backoff. |
+| `max_wait` | `?int`    | `null`        | `null`         | `null`        | Milliseconds. `null` = pace (wait); set it to fail fast with `RateLimitExceeded`. |
+| `jitter`   | `?int`    | `null`        | `null`         | `null`        | Milliseconds of random spread added to defers. |
+| `per_site` | `bool`    | `true`        | `true`         | `true`        | Include the site in the key; set `false` for account-wide API keys. |
+
+Each key is backed by an env var, e.g. `PLAUSIBLE_STATS_RATELIMIT=600`,
+`PLAUSIBLE_EVENTS_RATELIMIT_PER=minute`, `PLAUSIBLE_SITES_RATELIMIT_ENABLED=false`. Stats defaults
+to Plausible Cloud's documented ~600 requests/hour limit; Events is a generous per-minute budget
+for high-volume ingestion; Sites is a low provisioning budget. Self-hosted instances may set
+different numbers.
+
+**Wait vs fail fast.** By default a request that would exceed its window *waits* until the window
+frees up. Set `max_wait` (ms) to instead throw
+`RoundlyConsulting\Plausible\Exceptions\RateLimitExceeded` (a `PlausibleException`) carrying the
+budget `key` and `availableInSeconds`:
+
+```php
+use RoundlyConsulting\Plausible\Exceptions\RateLimitExceeded;
+
+try {
+    plausible()->stats()->aggregateResult($request);
+} catch (RateLimitExceeded $e) {
+    report("Retry {$e->key} in {$e->availableInSeconds}s");
+}
+```
+
+**Native retry.** The generic `retry.*` config (transient connection-error retry, off by default)
+is unrelated and left intact; leave `429` backoff to the adaptive limiter — don't double back off.
+
+**Shared budgets.** The limiter defaults to an in-memory (per-process) store — fine for a single
+worker, CLI, or scheduled report. For a budget shared across workers/servers (the realistic case
+for an account-wide 600/hr quota), point the limiter's store at Cache/Redis/Database via
+`HTTP_CLIENT_RATE_LIMITS_STORE` (see that package's README).
 
 ## Testing
 
