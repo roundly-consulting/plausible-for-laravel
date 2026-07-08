@@ -35,17 +35,24 @@ class StatsRepository extends Repository
 
     public function realtime(string $site): int
     {
-        return (int) $this->request()
-            ->get('/api/v1/stats/realtime/visitors', [
-                'site_id' => $site,
-            ])
-            ->body();
+        return (int) $this->throttled(
+            'stats',
+            $site,
+            fn (): Response => $this->request(throw: false)
+                ->get('/api/v1/stats/realtime/visitors', [
+                    'site_id' => $site,
+                ]),
+        )->body();
     }
 
     public function aggregate(AggregateRequest $request): Response
     {
-        return $this->request()
-            ->get('/api/v1/stats/aggregate', $request->toQuery()->toArray());
+        return $this->throttled(
+            'stats',
+            $request->site,
+            fn (): Response => $this->request(throw: false)
+                ->get('/api/v1/stats/aggregate', $request->toQuery()->toArray()),
+        );
     }
 
     public function aggregateResult(AggregateRequest $request): AggregateResult
@@ -55,8 +62,12 @@ class StatsRepository extends Repository
 
     public function timeseries(TimeseriesRequest $request): Response
     {
-        return $this->request()
-            ->get('/api/v1/stats/timeseries', $request->toQuery()->toArray());
+        return $this->throttled(
+            'stats',
+            $request->site,
+            fn (): Response => $this->request(throw: false)
+                ->get('/api/v1/stats/timeseries', $request->toQuery()->toArray()),
+        );
     }
 
     public function timeseriesResult(TimeseriesRequest $request): TimeseriesResult
@@ -66,8 +77,12 @@ class StatsRepository extends Repository
 
     public function breakdown(BreakdownRequest $request): Response
     {
-        return $this->request()
-            ->get('/api/v1/stats/breakdown', $request->toQuery()->toArray());
+        return $this->throttled(
+            'stats',
+            $request->site,
+            fn (): Response => $this->request(throw: false)
+                ->get('/api/v1/stats/breakdown', $request->toQuery()->toArray()),
+        );
     }
 
     public function breakdownResult(BreakdownRequest $request): BreakdownResult
@@ -81,7 +96,12 @@ class StatsRepository extends Repository
     public function runQuery(QueryRequest $request): QueryResult
     {
         return QueryResult::fromResponse(
-            $this->request()->post('/api/v2/query', $request->toBody()),
+            $this->throttled(
+                'stats',
+                $request->site,
+                fn (): Response => $this->request(throw: false)
+                    ->post('/api/v2/query', $request->toBody()),
+            ),
         );
     }
 }

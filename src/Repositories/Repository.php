@@ -6,11 +6,19 @@ namespace RoundlyConsulting\Plausible\Repositories;
 
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
+use RoundlyConsulting\Plausible\Concerns\InteractsWithRateLimits;
 use RoundlyConsulting\Plausible\Exceptions\MissingConfiguration;
 
 abstract class Repository
 {
-    protected function request(): PendingRequest
+    use InteractsWithRateLimits;
+
+    /**
+     * Build the base client. Throttled surfaces pass `throw: false` so the
+     * limiter callback can return the raw 429 for hcrl to read `Retry-After`;
+     * `Response::throw()` is then applied after the limiter (see the concern).
+     */
+    protected function request(bool $throw = true): PendingRequest
     {
         $url = config('plausible.url');
         $key = config('plausible.key');
@@ -25,8 +33,11 @@ abstract class Repository
 
         $request = Http::baseUrl($url)
             ->withToken($key)
-            ->timeout($this->timeout())
-            ->throw();
+            ->timeout($this->timeout());
+
+        if ($throw) {
+            $request->throw();
+        }
 
         if ($this->retryTimes() > 0) {
             $request->retry($this->retryTimes(), $this->retrySleep());

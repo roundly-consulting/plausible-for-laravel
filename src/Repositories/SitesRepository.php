@@ -13,20 +13,33 @@ class SitesRepository extends Repository
 {
     public function create(CreateSiteRequest $request): Response
     {
-        return $this->request()
-            ->post('/api/v1/sites', $request->toQuery()->toArray());
+        return $this->throttled(
+            'sites',
+            $request->domain,
+            fn (): Response => $this->request(throw: false)
+                ->post('/api/v1/sites', $request->toQuery()->toArray()),
+        );
     }
 
     public function delete(string $site): Response
     {
-        return $this->request()
-            ->delete('/api/v1/sites/'.$site);
+        return $this->throttled(
+            'sites',
+            $site,
+            fn (): Response => $this->request(throw: false)
+                ->delete('/api/v1/sites/'.$site),
+        );
     }
 
     public function get(string $site): SiteResult
     {
         return SiteResult::fromResponse(
-            $this->request()->get('/api/v1/sites/'.$site),
+            $this->throttled(
+                'sites',
+                $site,
+                fn (): Response => $this->request(throw: false)
+                    ->get('/api/v1/sites/'.$site),
+            ),
         );
     }
 
@@ -37,7 +50,11 @@ class SitesRepository extends Repository
      */
     public function list(): array
     {
-        $sites = $this->request()->get('/api/v1/sites')->json('sites');
+        $sites = $this->throttled(
+            'sites',
+            null,
+            fn (): Response => $this->request(throw: false)->get('/api/v1/sites'),
+        )->json('sites');
 
         if (! is_array($sites)) {
             return [];
@@ -53,7 +70,12 @@ class SitesRepository extends Repository
     public function update(UpdateSiteRequest $request): SiteResult
     {
         return SiteResult::fromResponse(
-            $this->request()->put('/api/v1/sites/'.$request->site, $request->toQuery()->toArray()),
+            $this->throttled(
+                'sites',
+                $request->site,
+                fn (): Response => $this->request(throw: false)
+                    ->put('/api/v1/sites/'.$request->site, $request->toQuery()->toArray()),
+            ),
         );
     }
 }

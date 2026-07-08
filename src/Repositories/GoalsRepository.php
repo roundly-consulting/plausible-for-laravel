@@ -19,7 +19,12 @@ class GoalsRepository extends Repository
     public function create(CreateGoalRequest $request): GoalResult
     {
         return GoalResult::fromResponse(
-            $this->request()->put('/api/v1/sites/goals', $request->toQuery()->toArray()),
+            $this->throttled(
+                'sites',
+                $request->site,
+                fn (): Response => $this->request(throw: false)
+                    ->put('/api/v1/sites/goals', $request->toQuery()->toArray()),
+            ),
         );
     }
 
@@ -28,7 +33,12 @@ class GoalsRepository extends Repository
      */
     public function list(string $site): array
     {
-        $goals = $this->request()->get('/api/v1/sites/goals', ['site_id' => $site])->json('goals');
+        $goals = $this->throttled(
+            'sites',
+            $site,
+            fn (): Response => $this->request(throw: false)
+                ->get('/api/v1/sites/goals', ['site_id' => $site]),
+        )->json('goals');
 
         if (! is_array($goals)) {
             return [];
@@ -43,7 +53,11 @@ class GoalsRepository extends Repository
 
     public function delete(string $site, int|string $goalId): Response
     {
-        return $this->request()
-            ->delete('/api/v1/sites/goals/'.$goalId, ['site_id' => $site]);
+        return $this->throttled(
+            'sites',
+            $site,
+            fn (): Response => $this->request(throw: false)
+                ->delete('/api/v1/sites/goals/'.$goalId, ['site_id' => $site]),
+        );
     }
 }

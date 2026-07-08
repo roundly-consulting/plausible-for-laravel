@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Plausible\Repositories;
 
+use Illuminate\Http\Client\Response;
 use RoundlyConsulting\Plausible\Requests\Sites\CreateSharedLinkRequest;
 use RoundlyConsulting\Plausible\Results\SharedLinkResult;
 
@@ -23,7 +24,12 @@ class SharedLinksRepository extends Repository
     public function createFrom(CreateSharedLinkRequest $request): SharedLinkResult
     {
         return SharedLinkResult::fromResponse(
-            $this->request()->put('/api/v1/sites/shared-links', $request->toQuery()->toArray()),
+            $this->throttled(
+                'sites',
+                $request->site,
+                fn (): Response => $this->request(throw: false)
+                    ->put('/api/v1/sites/shared-links', $request->toQuery()->toArray()),
+            ),
         );
     }
 }

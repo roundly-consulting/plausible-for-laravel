@@ -48,6 +48,67 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Client-side rate limiting
+    |--------------------------------------------------------------------------
+    |
+    | Outbound requests are paced through http-client-rate-limits so you proactively
+    | stay under Plausible's quotas instead of hammering the API and eating 429s.
+    | Each surface — `stats` (query API), `events` (ingestion) and `sites`
+    | (provisioning: sites, goals, shared links) — has its own bucket, keyed
+    | `plausible:{surface}:{owner}:{host}[:{site}]`.
+    |
+    | Per bucket:
+    |   enabled  — false runs the plain client with no limiter.
+    |   owner    — folds several app instances sharing one API key into one window.
+    |   limit    — max requests per `per` window.
+    |   per      — window size: second|minute|hour|day.
+    |   adaptive — honour Plausible's 429 `Retry-After` (server-authoritative backoff).
+    |   max_wait — ms; null = pace (wait), set = fail fast with RateLimitExceeded.
+    |   jitter   — ms of random spread added to defers, null = none.
+    |   per_site — include the site in the key; false for account-wide API keys.
+    |
+    | For a budget shared across workers/servers, point the limiter's store at
+    | Cache/Redis/Database via HTTP_CLIENT_RATE_LIMITS_STORE (see that package).
+    |
+    */
+
+    'rate_limits' => [
+        'stats' => [
+            'enabled' => (bool) env('PLAUSIBLE_STATS_RATELIMIT_ENABLED', true),
+            'owner' => env('PLAUSIBLE_RATELIMIT_OWNER', 'app'),
+            'limit' => (int) env('PLAUSIBLE_STATS_RATELIMIT', 600),
+            'per' => env('PLAUSIBLE_STATS_RATELIMIT_PER', 'hour'),
+            'adaptive' => (bool) env('PLAUSIBLE_STATS_RATELIMIT_ADAPTIVE', true),
+            'max_wait' => env('PLAUSIBLE_STATS_RATELIMIT_MAX_WAIT'),
+            'jitter' => env('PLAUSIBLE_STATS_RATELIMIT_JITTER'),
+            'per_site' => (bool) env('PLAUSIBLE_STATS_RATELIMIT_PER_SITE', true),
+        ],
+
+        'events' => [
+            'enabled' => (bool) env('PLAUSIBLE_EVENTS_RATELIMIT_ENABLED', true),
+            'owner' => env('PLAUSIBLE_RATELIMIT_OWNER', 'app'),
+            'limit' => (int) env('PLAUSIBLE_EVENTS_RATELIMIT', 6000),
+            'per' => env('PLAUSIBLE_EVENTS_RATELIMIT_PER', 'minute'),
+            'adaptive' => (bool) env('PLAUSIBLE_EVENTS_RATELIMIT_ADAPTIVE', true),
+            'max_wait' => env('PLAUSIBLE_EVENTS_RATELIMIT_MAX_WAIT'),
+            'jitter' => env('PLAUSIBLE_EVENTS_RATELIMIT_JITTER'),
+            'per_site' => (bool) env('PLAUSIBLE_EVENTS_RATELIMIT_PER_SITE', true),
+        ],
+
+        'sites' => [
+            'enabled' => (bool) env('PLAUSIBLE_SITES_RATELIMIT_ENABLED', true),
+            'owner' => env('PLAUSIBLE_RATELIMIT_OWNER', 'app'),
+            'limit' => (int) env('PLAUSIBLE_SITES_RATELIMIT', 60),
+            'per' => env('PLAUSIBLE_SITES_RATELIMIT_PER', 'hour'),
+            'adaptive' => (bool) env('PLAUSIBLE_SITES_RATELIMIT_ADAPTIVE', true),
+            'max_wait' => env('PLAUSIBLE_SITES_RATELIMIT_MAX_WAIT'),
+            'jitter' => env('PLAUSIBLE_SITES_RATELIMIT_JITTER'),
+            'per_site' => (bool) env('PLAUSIBLE_SITES_RATELIMIT_PER_SITE', true),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Server-side tracking
     |--------------------------------------------------------------------------
     |

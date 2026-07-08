@@ -41,8 +41,12 @@ class EventsRepository extends Repository
 
     public function capture(CaptureEventRequest $request): Response
     {
-        return $this->request()
-            ->post('/api/event', $request->toQuery()->toArray());
+        return $this->throttled(
+            'events',
+            $request->site,
+            fn (): Response => $this->request(throw: false)
+                ->post('/api/event', $request->toQuery()->toArray()),
+        );
     }
 
     /**
@@ -110,13 +114,13 @@ class EventsRepository extends Repository
         return Bus::batch($jobs)->name('plausible:capture')->dispatch();
     }
 
-    protected function request(): PendingRequest
+    protected function request(bool $throw = true): PendingRequest
     {
         if (is_null($this->visitorUserAgent) || is_null($this->visitorIpAddress)) {
             throw UniqueVisitorIdentifierRequired::error();
         }
 
-        return parent::request()
+        return parent::request($throw)
             ->withHeaders([
                 'User-Agent' => $this->visitorUserAgent,
                 'X-Forwarded-For' => $this->visitorIpAddress,
