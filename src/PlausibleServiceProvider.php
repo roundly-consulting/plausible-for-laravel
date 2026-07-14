@@ -6,40 +6,68 @@ namespace RoundlyConsulting\Plausible;
 
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Blade;
-use Illuminate\Support\ServiceProvider;
+use RoundlyConsulting\PackageToolkit\Package;
+use RoundlyConsulting\PackageToolkit\PackageServiceProvider;
 use RoundlyConsulting\Plausible\Commands\HealthCommand;
 use RoundlyConsulting\Plausible\Http\Middleware\TrackPageview;
 use RoundlyConsulting\Plausible\View\Components\PlausibleScript;
 
-final class PlausibleServiceProvider extends ServiceProvider
+final class PlausibleServiceProvider extends PackageServiceProvider
 {
+    public function configurePackage(Package $package): void
+    {
+        $package
+            ->name('plausible')
+            ->hasConfigFile()
+            ->hasViews()
+            ->hasCommands([
+                HealthCommand::class,
+            ])
+            ->contributesToAbout(static function (): array {
+                $url = config('plausible.url');
+                $site = config('plausible.site');
+                $key = config('plausible.key');
+
+                return [
+                    'Instance' => is_string($url) && $url !== '' ? $url : 'NOT SET',
+                    'API key' => is_string($key) && $key !== '' ? 'SET' : 'MISSING',
+                    'Default site' => is_string($site) && $site !== '' ? $site : 'NONE',
+                    'Rate limiting' => self::throttledSurfaces(),
+                    'Queued tracking' => config('plausible.tracking.queue', true) !== false ? 'ON' : 'OFF',
+                ];
+            });
+    }
+
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__.'/../config/plausible.php', 'plausible');
+        parent::register();
 
         $this->app->singleton(Plausible::class);
     }
 
     public function boot(): void
     {
-        $this->loadViewsFrom(__DIR__.'/../resources/views', 'plausible');
+        parent::boot();
 
         $this->registerBladeIntegration();
         $this->registerMiddleware();
+    }
 
-        if ($this->app->runningInConsole()) {
-            $this->commands([
-                HealthCommand::class,
-            ]);
+    /**
+     * The API surfaces still paced by the client-side limiter, so `about` shows
+     * at a glance which buckets a host has switched off.
+     */
+    private static function throttledSurfaces(): string
+    {
+        /** @var array<string, array<string, mixed>> $surfaces */
+        $surfaces = config('plausible.rate_limits', []);
 
-            $this->publishes([
-                __DIR__.'/../config/plausible.php' => config_path('plausible.php'),
-            ], 'plausible-config');
+        $enabled = array_keys(array_filter(
+            $surfaces,
+            static fn (array $surface): bool => ($surface['enabled'] ?? true) !== false,
+        ));
 
-            $this->publishes([
-                __DIR__.'/../resources/views' => $this->app->resourcePath('views/vendor/plausible'),
-            ], 'plausible-views');
-        }
+        return $enabled === [] ? 'OFF' : implode(', ', $enabled);
     }
 
     private function registerBladeIntegration(): void
