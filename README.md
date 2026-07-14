@@ -20,9 +20,13 @@ strongly-typed request API — no manual HTTP plumbing required.
 
 ## Integrates with
 
-This package builds on two other roundly-consulting packages (hard `require`d — installed
+This package builds on three other roundly-consulting packages (hard `require`d — installed
 automatically):
 
+- **[package-toolkit-for-laravel](https://github.com/roundly-consulting/package-toolkit-for-laravel)**
+  — the service provider is built on the toolkit's package builder, so the config/views/commands
+  wiring and the publish tags are declared once. It also contributes a `php artisan about` section
+  and backs the `Retry-After` hint on `RateLimitExceeded`. See [Rate limiting](#rate-limiting).
 - **[enums-for-laravel](https://github.com/roundly-consulting/enums-for-laravel)** — the query
   enums (`Metric`, `Interval`, `GoalType`, `FilterOperator`, `Period`, `Dimension`, `Property`)
   gain the full `Helpers` surface: `values()`, `labels()`, `options()`, `toOptions()`,
@@ -567,7 +571,8 @@ different numbers.
 **Wait vs fail fast.** By default a request that would exceed its window *waits* until the window
 frees up. Set `max_wait` (ms) to instead throw
 `RoundlyConsulting\Plausible\Exceptions\RateLimitExceeded` (a `PlausibleException`) carrying the
-budget `key` and `availableInSeconds`:
+budget `key`, and the wait window via the toolkit's `HasRetryAfter` contract
+(`retryAfterSeconds()`):
 
 ```php
 use RoundlyConsulting\Plausible\Exceptions\RateLimitExceeded;
@@ -575,7 +580,18 @@ use RoundlyConsulting\Plausible\Exceptions\RateLimitExceeded;
 try {
     plausible()->stats()->aggregateResult($request);
 } catch (RateLimitExceeded $e) {
-    report("Retry {$e->key} in {$e->availableInSeconds}s");
+    report("Retry {$e->key} in {$e->retryAfterSeconds()}s");
+}
+```
+
+Because the hint rides on `RoundlyConsulting\PackageToolkit\Contracts\HasRetryAfter`, a host can
+answer any rate-limited failure — from this package or another roundly package — with one check:
+
+```php
+use RoundlyConsulting\PackageToolkit\Contracts\HasRetryAfter;
+
+if ($e instanceof HasRetryAfter) {
+    return response('Too Many Requests', 429, ['Retry-After' => $e->retryAfterSeconds()]);
 }
 ```
 

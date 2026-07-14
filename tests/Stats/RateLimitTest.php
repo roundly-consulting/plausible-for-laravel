@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use RoundlyConsulting\HttpClientRateLimits\Facades\RateLimits;
+use RoundlyConsulting\PackageToolkit\Contracts\HasRetryAfter;
 use RoundlyConsulting\Plausible\Exceptions\RateLimitExceeded;
 use RoundlyConsulting\Plausible\Requests\Events\CaptureEventRequest;
 use RoundlyConsulting\Plausible\Requests\Sites\CreateSiteRequest;
@@ -76,8 +77,9 @@ it('exposes the budget key and wait window on the fail-fast exception', function
     try {
         aggregate();
     } catch (RateLimitExceeded $e) {
-        expect($e->key)->toBe('plausible:stats:app:localhost:localhost')
-            ->and($e->availableInSeconds)->toBeGreaterThan(0);
+        expect($e)->toBeInstanceOf(HasRetryAfter::class)
+            ->and($e->key)->toBe('plausible:stats:app:localhost:localhost')
+            ->and($e->retryAfterSeconds())->toBeGreaterThan(0);
 
         return;
     }
