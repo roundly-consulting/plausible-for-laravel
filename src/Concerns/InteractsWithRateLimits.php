@@ -27,7 +27,7 @@ trait InteractsWithRateLimits
     protected function rateLimiter(string $surface, ?string $site): ?RateLimit
     {
         /** @var array<string, mixed> $config */
-        $config = config("plausible.rate_limits.{$surface}", []);
+        $config = config(self::rateLimitSectionKey($surface), []);
 
         if (($config['enabled'] ?? true) === false) {
             return null;
@@ -54,6 +54,28 @@ trait InteractsWithRateLimits
         }
 
         return $rateLimit;
+    }
+
+    /**
+     * The config key of a surface's rate-limit block, named by literal rather than built as
+     * `"plausible.rate_limits.{$surface}"`.
+     *
+     * A concatenated key cannot be checked against the shipped config file, which is the
+     * exact shape that let shops #18 read a key the package never shipped while its suite
+     * stayed green. The surface set is closed — three API surfaces, each with its own bucket
+     * — so enumerating them costs nothing and makes the section keys verifiable.
+     *
+     * An unknown surface yields no block, so `rateLimiter()` falls back to the packaged
+     * defaults exactly as it did when `config()` missed on an interpolated key.
+     */
+    private static function rateLimitSectionKey(string $surface): string
+    {
+        return match ($surface) {
+            'stats' => 'plausible.rate_limits.stats',
+            'events' => 'plausible.rate_limits.events',
+            'sites' => 'plausible.rate_limits.sites',
+            default => 'plausible.rate_limits.unknown',
+        };
     }
 
     /**
