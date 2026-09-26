@@ -65,15 +65,29 @@
             "type": "vcs",
             "url": "https://github.com/roundly-consulting/testing-for-laravel",
             "no-api": true
+        },
+        {
+            "type": "path",
+            "url": "../money-for-laravel*",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/roundly-consulting/money-for-laravel",
+            "no-api": true
         }
     ],
     "require": {
         "php": "^8.4",
+        "ext-bcmath": "*",
         "illuminate/contracts": "^12.0|^13.0",
         "illuminate/http": "^12.0|^13.0",
         "illuminate/support": "^12.0|^13.0",
         "roundly-consulting/enums-for-laravel": "@dev",
         "roundly-consulting/http-client-rate-limits-for-laravel": "@dev",
+        "roundly-consulting/money-for-laravel": "@dev",
         "roundly-consulting/package-toolkit-for-laravel": "@dev"
     },
     "require-dev": {
