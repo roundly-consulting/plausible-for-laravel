@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use PHPUnit\Framework\ExpectationFailedException;
+use RoundlyConsulting\Money\Money;
+use RoundlyConsulting\Plausible\DataTransferObjects\Revenue;
 use RoundlyConsulting\Plausible\Enums\Metric;
 use RoundlyConsulting\Plausible\Facades\Plausible;
 use RoundlyConsulting\Plausible\Requests\Events\CaptureEventRequest;
@@ -84,3 +86,21 @@ it('fails when an expected site was not created', function () {
 
     Plausible::assertSiteCreated('never.test');
 })->throws(ExpectationFailedException::class);
+
+it('matches a captured revenue event the way the README shows', function () {
+    Plausible::fake();
+
+    Plausible::events()
+        ->setVisitor('Agent/1.0', '1.2.3.4')
+        ->capture(CaptureEventRequest::make(
+            site: 'localhost',
+            url: 'https://localhost/checkout',
+            name: 'purchase',
+            revenue: Revenue::of('49.00', 'EUR'),
+        ));
+
+    Plausible::assertEventCaptured(
+        fn (CaptureEventRequest $event) => $event->name === 'purchase'
+            && $event->revenue?->amount->equals(Money::ofMajor('49', 'EUR')) === true,
+    );
+});

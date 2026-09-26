@@ -642,6 +642,7 @@ In your application's tests, swap the client into a recording fake with `Plausib
 no real HTTP — then assert on what was captured or queried:
 
 ```php
+use RoundlyConsulting\Money\Money;
 use RoundlyConsulting\Plausible\Facades\Plausible;
 use RoundlyConsulting\Plausible\Requests\Events\CaptureEventRequest;
 
@@ -651,7 +652,7 @@ $this->post('/checkout', [/* ... */]);
 
 Plausible::assertEventCaptured(
     fn (CaptureEventRequest $event) => $event->name === 'purchase'
-        && $event->revenue?->amount === 49.0,
+        && $event->revenue?->amount->equals(Money::ofMajor('49', 'EUR')) === true,
 );
 
 Plausible::assertQueried(fn ($request, string $type) => $type === 'aggregate');
