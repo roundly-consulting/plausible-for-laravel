@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use RoundlyConsulting\Money\Money;
 use RoundlyConsulting\Plausible\Exceptions\PlausibleException;
 use RoundlyConsulting\Plausible\Plausible;
 use RoundlyConsulting\Plausible\Repositories\EventsRepository;
@@ -63,3 +64,44 @@ ArchPresets::noLocalCryptoPrimitives('RoundlyConsulting\Plausible');
 ArchPresets::runtimeRequireIsWhitelisted(__DIR__.'/../composer.json');
 
 ArchPresets::noDebuggingLeftovers();
+
+/**
+ * Plausible builds on money's public surface only (`Money`, `Currency`, the exception
+ * family). Its `@internal` classes — the integer/decimal grammars, the calculator, casts,
+ * macros — may change shape without notice, so reaching into them is a build break.
+ * The list is read from money's own source, not hand-copied, and pinned non-empty so the
+ * rule can never pass over an empty scan.
+ */
+$moneyInternals = (static function (): array {
+    $src = dirname((string) (new ReflectionClass(Money::class))->getFileName());
+    $classes = [];
+
+    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($src)) as $file) {
+        if (! $file instanceof SplFileInfo || $file->getExtension() !== 'php') {
+            continue;
+        }
+
+        $code = (string) file_get_contents($file->getPathname());
+
+        if (preg_match('/^namespace\s+([^;]+);/m', $code, $namespace) === 1
+            && preg_match('~/\*\*(?:(?!\*/).)*@internal(?:(?!\*/).)*\*/\s*(?:#\[[^\]]*\]\s*)*(?:(?:final|abstract|readonly)\s+)*(?:class|trait|interface|enum)\s+(\w+)~s', $code, $class) === 1) {
+            $classes[] = $namespace[1].'\\'.$class[1];
+        }
+    }
+
+    sort($classes);
+
+    return $classes;
+})();
+
+it('finds money internals to guard', function () use ($moneyInternals) {
+    expect($moneyInternals)->toContain(
+        'RoundlyConsulting\Money\Math\IntegerString',
+        'RoundlyConsulting\Money\Math\DecimalString',
+        'RoundlyConsulting\Money\Math\Calculator',
+    )->and(count($moneyInternals))->toBeGreaterThanOrEqual(10);
+});
+
+arch('plausible never imports a money @internal class')
+    ->expect('RoundlyConsulting\Plausible')
+    ->not->toUse($moneyInternals);
