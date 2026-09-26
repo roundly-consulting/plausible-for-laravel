@@ -56,11 +56,11 @@ final class PlausibleFake extends Plausible
     public function __construct()
     {
         if (! is_string(config('plausible.url')) || config('plausible.url') === '') {
-            config(['plausible.url' => 'https://plausible.test']);
+            config()->set('plausible.url', 'https://plausible.test');
         }
 
         if (! is_string(config('plausible.key')) || config('plausible.key') === '') {
-            config(['plausible.key' => 'fake-key']);
+            config()->set('plausible.key', 'fake-key');
         }
 
         Http::fake([
