@@ -14,13 +14,13 @@ strongly-typed request API — no manual HTTP plumbing required.
 
 ## Requirements
 
-- PHP `^8.4`
+- PHP `^8.4` with `ext-bcmath`
 - Laravel `^12.0` or `^13.0`
 - A Plausible account (Cloud or self-hosted) and an API key
 
 ## Integrates with
 
-This package builds on three other roundly-consulting packages (hard `require`d — installed
+This package builds on four other roundly-consulting packages (hard `require`d — installed
 automatically):
 
 - **[package-toolkit-for-laravel](https://github.com/roundly-consulting/package-toolkit-for-laravel)**
@@ -35,6 +35,10 @@ automatically):
   — every outbound surface (Stats, Events, Sites) is paced through a client-side rate limiter with
   server-authoritative adaptive backoff off Plausible's `429 Retry-After`. See
   [Rate limiting](#rate-limiting).
+- **[money-for-laravel](https://github.com/roundly-consulting/money-for-laravel)** — event revenue
+  is an exact `Money`: the amount reaches Plausible as a decimal string with no float anywhere on
+  the way, and currencies Plausible can't convert are refused up front. See
+  [Revenue](#revenue).
 
 > While these packages are pre-Packagist they are wired by local path + private VCS in
 > `composer.json`; nothing extra to install.
@@ -339,7 +343,7 @@ Plausible::events()
         site: 'my-site.com',
         url: 'https://my-site.com/checkout',
         name: 'purchase',
-        revenue: new Revenue(currency: 'EUR', amount: 49.0),
+        revenue: Revenue::of('49.00', 'EUR'),
         props: ['plan' => 'pro'],
     ));
 
@@ -356,6 +360,35 @@ Plausible::events()
 
 `fromRequest()` and `pageview()` use the configured default site when none is given.
 `captureQueued()` dispatches `RoundlyConsulting\Plausible\Jobs\CaptureEventJob` onto your queue.
+
+#### Revenue
+
+Revenue is a [money-for-laravel](https://github.com/roundly-consulting/money-for-laravel) `Money`,
+so the amount is exact at any size and never passes through a float:
+
+```php
+use RoundlyConsulting\Money\Money;
+use RoundlyConsulting\Plausible\DataTransferObjects\Revenue;
+
+Revenue::of('49', 'eur');                       // {"currency":"EUR","amount":"49.00"}
+Revenue::of('1500', 'JPY');                     // {"currency":"JPY","amount":"1500"}
+Revenue::make(Money::ofMinor(1299, 'USD'));     // {"currency":"USD","amount":"12.99"}
+Revenue::make($order->total);                   // any Money you already hold
+
+Revenue::of('92233720368547758.08', 'USD');     // beyond int64 — sent exactly
+```
+
+- `of()` takes major units as a decimal **string** or an int — there is no float overload.
+- The payload `amount` is the currency's decimal string (`toDecimal()`); Plausible accepts it
+  as a string.
+- Anything invalid throws `RoundlyConsulting\Plausible\Exceptions\InvalidRevenue` (the money
+  exception is chained as `getPrevious()`):
+  - an unknown or malformed currency code (`'EURO'`);
+  - a **custom** (non-ISO 4217) currency such as loyalty points — Plausible converts ISO
+    currencies only and would silently drop the revenue;
+  - more decimals than the currency allows (`'12.999'` USD) — round it yourself with money
+    first, revenue never rounds for you;
+  - a malformed amount (`'1,50'`, `'1e3'`).
 
 #### Batch capture
 
