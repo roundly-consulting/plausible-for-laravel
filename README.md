@@ -40,9 +40,6 @@ automatically):
   the way, and currencies Plausible can't convert are refused up front. See
   [Revenue](#revenue).
 
-> While these packages are pre-Packagist they are wired by local path + private VCS in
-> `composer.json`; nothing extra to install.
-
 ## Installation
 
 Install the package via Composer:
