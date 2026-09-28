@@ -53,7 +53,7 @@ class GoalsRepository extends Repository
             'sites',
             $site,
             fn (): Response => $this->request(throw: false)
-                ->delete('/api/v1/sites/goals/'.$goalId, ['site_id' => $site]),
+                ->delete('/api/v1/sites/goals/'.self::segment($goalId), ['site_id' => $site]),
         )->json('deleted') !== false;
     }
 }

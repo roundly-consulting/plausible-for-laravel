@@ -33,7 +33,7 @@ class SitesRepository extends Repository
             'sites',
             $site,
             fn (): Response => $this->request(throw: false)
-                ->delete('/api/v1/sites/'.$site),
+                ->delete('/api/v1/sites/'.self::segment($site)),
         )->json('deleted') !== false;
     }
 
@@ -44,7 +44,7 @@ class SitesRepository extends Repository
                 'sites',
                 $site,
                 fn (): Response => $this->request(throw: false)
-                    ->get('/api/v1/sites/'.$site),
+                    ->get('/api/v1/sites/'.self::segment($site)),
             ),
         );
     }
@@ -71,7 +71,7 @@ class SitesRepository extends Repository
                 'sites',
                 $request->site,
                 fn (): Response => $this->request(throw: false)
-                    ->put('/api/v1/sites/'.$request->site, $request->toQuery()->toArray()),
+                    ->put('/api/v1/sites/'.self::segment($request->site), $request->toQuery()->toArray()),
             ),
         );
     }

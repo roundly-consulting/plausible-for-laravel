@@ -97,6 +97,18 @@ abstract class Repository
     }
 
     /**
+     * Encode a value for use as ONE URL path segment. Plausible site ids may contain `/`
+     * (sub-folder sites), and a tenant-supplied id could carry `?`, `#` or a dot-segment —
+     * raw, any of those would re-route the request to another endpoint.
+     */
+    protected static function segment(int|string $value): string
+    {
+        $encoded = rawurlencode((string) $value);
+
+        return $encoded === '.' || $encoded === '..' ? str_replace('.', '%2E', $encoded) : $encoded;
+    }
+
+    /**
      * The configured default site (domain), or null when none is set.
      */
     public function defaultSite(): ?string
