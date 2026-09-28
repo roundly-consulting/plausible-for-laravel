@@ -58,6 +58,11 @@ return [
     | (provisioning: sites, goals, shared links) — has its own bucket, keyed
     | `plausible:{surface}:{owner}:{host}[:{site}]`.
     |
+    | Plausible's API limit (600 requests/hour by default) applies per API key,
+    | across every site the key can read — so `stats` and `sites` default to ONE
+    | account-wide bucket (`per_site` false). `events` is unauthenticated and keeps
+    | a bucket per site.
+    |
     | Per bucket:
     |   enabled  — false runs the plain client with no limiter.
     |   owner    — folds several app instances sharing one API key into one window.
@@ -66,7 +71,8 @@ return [
     |   adaptive — honour Plausible's 429 `Retry-After` (server-authoritative backoff).
     |   max_wait — ms; null = pace (wait), set = fail fast with RateLimitExceeded.
     |   jitter   — ms of random spread added to defers, null = none.
-    |   per_site — include the site in the key; false for account-wide API keys.
+    |   per_site — include the site in the key (a separate budget per site). Only
+    |              turn it on for stats/sites if your key really has per-site quotas.
     |
     | For a budget shared across workers/servers, point the limiter's store at
     | Cache/Redis/Database via HTTP_CLIENT_RATE_LIMITS_STORE (see that package).
@@ -82,7 +88,7 @@ return [
             'adaptive' => (bool) env('PLAUSIBLE_STATS_RATELIMIT_ADAPTIVE', true),
             'max_wait' => env('PLAUSIBLE_STATS_RATELIMIT_MAX_WAIT'),
             'jitter' => env('PLAUSIBLE_STATS_RATELIMIT_JITTER'),
-            'per_site' => (bool) env('PLAUSIBLE_STATS_RATELIMIT_PER_SITE', true),
+            'per_site' => (bool) env('PLAUSIBLE_STATS_RATELIMIT_PER_SITE', false),
         ],
 
         'events' => [
@@ -104,7 +110,7 @@ return [
             'adaptive' => (bool) env('PLAUSIBLE_SITES_RATELIMIT_ADAPTIVE', true),
             'max_wait' => env('PLAUSIBLE_SITES_RATELIMIT_MAX_WAIT'),
             'jitter' => env('PLAUSIBLE_SITES_RATELIMIT_JITTER'),
-            'per_site' => (bool) env('PLAUSIBLE_SITES_RATELIMIT_PER_SITE', true),
+            'per_site' => (bool) env('PLAUSIBLE_SITES_RATELIMIT_PER_SITE', false),
         ],
     ],
 

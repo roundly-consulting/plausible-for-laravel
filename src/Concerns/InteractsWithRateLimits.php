@@ -40,7 +40,7 @@ trait InteractsWithRateLimits
         $rateLimit = RateLimits::make(new Limit(
             maxAttempts: (int) ($config['limit'] ?? 600),
             timespan: $timespan,
-        ))->by($this->rateLimitKey($surface, $owner, $site, (bool) ($config['per_site'] ?? true)));
+        ))->by($this->rateLimitKey($surface, $owner, $site, (bool) ($config['per_site'] ?? $surface === 'events')));
 
         if (($config['adaptive'] ?? true) === true) {
             $rateLimit->adaptive();
@@ -114,7 +114,9 @@ trait InteractsWithRateLimits
      * Identity used to key a surface's client-side budget:
      * `plausible:{surface}:{owner}:{host}[:{site}]`. `host` comes from the
      * configured instance URL so Cloud and self-hosted never share a window;
-     * `site` is appended when `per_site` is on (drop it for account-wide keys).
+     * `site` is appended when `per_site` is on. Plausible limits the Stats and
+     * Sites APIs per API key, so those surfaces default to the site-less key;
+     * the unauthenticated Events API defaults to a budget per site.
      */
     protected function rateLimitKey(string $surface, string $owner, ?string $site, bool $perSite): string
     {

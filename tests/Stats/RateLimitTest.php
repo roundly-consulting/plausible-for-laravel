@@ -40,10 +40,10 @@ it('paces every stats request through its own bucket and lets it through', funct
 
     aggregate();
 
-    $fake->assertAllowed('plausible:stats:app:localhost:localhost');
+    $fake->assertAllowed('plausible:stats:app:localhost');
 });
 
-it('defers a stats request once the per-site budget is exhausted', function () {
+it('defers a stats request once the budget is exhausted', function () {
     config()->set('plausible.rate_limits.stats.limit', 1);
     $fake = RateLimits::fake();
     useHttpSnapshot('stats/aggregate');
@@ -51,7 +51,7 @@ it('defers a stats request once the per-site budget is exhausted', function () {
     aggregate();
     aggregate();
 
-    $fake->assertDeferred('plausible:stats:app:localhost:localhost');
+    $fake->assertDeferred('plausible:stats:app:localhost');
 });
 
 it('fails fast with a native RateLimitExceeded when the wait exceeds max_wait', function () {
@@ -63,7 +63,7 @@ it('fails fast with a native RateLimitExceeded when the wait exceeds max_wait', 
     aggregate();
 
     expect(fn () => aggregate())
-        ->toThrow(RateLimitExceeded::class, 'Rate limit for [plausible:stats:app:localhost:localhost] exceeded.');
+        ->toThrow(RateLimitExceeded::class, 'Rate limit for [plausible:stats:app:localhost] exceeded.');
 });
 
 it('exposes the budget key and wait window on the fail-fast exception', function () {
@@ -78,7 +78,7 @@ it('exposes the budget key and wait window on the fail-fast exception', function
         aggregate();
     } catch (RateLimitExceeded $e) {
         expect($e)->toBeInstanceOf(HasRetryAfter::class)
-            ->and($e->key)->toBe('plausible:stats:app:localhost:localhost')
+            ->and($e->key)->toBe('plausible:stats:app:localhost')
             ->and($e->retryAfterSeconds())->toBeGreaterThan(0);
 
         return;
@@ -110,10 +110,11 @@ it('reads the 429 Retry-After so the next stats request self-throttles', functio
         // still the faked 429 — we only care it was deferred first.
     }
 
-    $fake->assertDeferred('plausible:stats:app:localhost:localhost');
+    $fake->assertDeferred('plausible:stats:app:localhost');
 });
 
-it('keeps a separate stats budget per site', function () {
+it('keeps a separate stats budget per site when per_site is on', function () {
+    config()->set('plausible.rate_limits.stats.per_site', true);
     config()->set('plausible.rate_limits.stats.limit', 1);
     $fake = RateLimits::fake();
     useHttpSnapshot('stats/aggregate');
@@ -156,8 +157,8 @@ it('throttles sites provisioning through its own bucket', function () {
     createSite();
     createSite();
 
-    $fake->assertAllowed('plausible:sites:app:localhost:example.com')
-        ->assertDeferred('plausible:sites:app:localhost:example.com');
+    $fake->assertAllowed('plausible:sites:app:localhost')
+        ->assertDeferred('plausible:sites:app:localhost');
 });
 
 it('applies configured jitter to the stats bucket', function () {
@@ -167,7 +168,7 @@ it('applies configured jitter to the stats bucket', function () {
 
     aggregate();
 
-    $fake->assertAllowed('plausible:stats:app:localhost:localhost');
+    $fake->assertAllowed('plausible:stats:app:localhost');
 });
 
 it('keeps the three surface budgets isolated from one another', function () {
@@ -183,4 +184,38 @@ it('keeps the three surface budgets isolated from one another', function () {
 
     $fake->assertAllowed('plausible:events:app:localhost:localhost')
         ->assertNothingDeferred();
+});
+
+it('shares one stats budget across every site by default, as Plausible limits per api key', function () {
+    config()->set('plausible.rate_limits.stats.limit', 1);
+    config()->set('plausible.rate_limits.stats.max_wait', 0);
+    RateLimits::fake();
+    useHttpSnapshot('stats/aggregate');
+
+    aggregate('rl.com');
+
+    expect(fn () => aggregate('other-site.com'))
+        ->toThrow(RateLimitExceeded::class, 'Rate limit for [plausible:stats:app:localhost] exceeded.');
+});
+
+it('shares one sites budget across every site by default', function () {
+    config()->set('plausible.rate_limits.sites.limit', 1);
+    $fake = RateLimits::fake();
+    useHttpSnapshot('sites/create');
+
+    createSite('one.test');
+    createSite('two.test');
+
+    $fake->assertDeferred('plausible:sites:app:localhost');
+});
+
+it('keeps events budgets per site by default', function () {
+    config()->set('plausible.rate_limits.events.limit', 1);
+    $fake = RateLimits::fake();
+    useHttpSnapshot('events/capture');
+
+    capture('one.test');
+    capture('two.test');
+
+    $fake->assertNothingDeferred();
 });
