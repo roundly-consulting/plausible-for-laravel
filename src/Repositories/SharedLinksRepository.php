@@ -16,9 +16,13 @@ use RoundlyConsulting\Plausible\Results\SharedLinkResult;
  */
 class SharedLinksRepository extends Repository
 {
-    public function create(string $site, string $name, ?string $password = null): SharedLinkResult
+    /**
+     * Find or create the shared link `$name` for a site. Plausible answers with the existing
+     * link when one of that name exists.
+     */
+    public function create(string $site, string $name): SharedLinkResult
     {
-        return $this->createFrom(CreateSharedLinkRequest::make($site, $name, $password));
+        return $this->createFrom(CreateSharedLinkRequest::make($site, $name));
     }
 
     public function createFrom(CreateSharedLinkRequest $request): SharedLinkResult
