@@ -8,6 +8,7 @@ use Closure;
 use Illuminate\Http\Client\Response;
 use RoundlyConsulting\HttpClientRateLimits\Enums\Timespan;
 use RoundlyConsulting\HttpClientRateLimits\Exceptions\RateLimitExceededException as HttpRateLimitExceededException;
+use RoundlyConsulting\HttpClientRateLimits\Facades\RateLimits;
 use RoundlyConsulting\HttpClientRateLimits\Limit;
 use RoundlyConsulting\HttpClientRateLimits\RateLimit;
 use RoundlyConsulting\Plausible\Exceptions\RateLimitExceeded;
@@ -36,7 +37,7 @@ trait InteractsWithRateLimits
         $timespan = Timespan::tryFrom((string) ($config['per'] ?? 'hour')) ?? Timespan::Hour;
         $owner = (string) ($config['owner'] ?? 'app');
 
-        $rateLimit = RateLimit::make(new Limit(
+        $rateLimit = RateLimits::make(new Limit(
             maxAttempts: (int) ($config['limit'] ?? 600),
             timespan: $timespan,
         ))->by($this->rateLimitKey($surface, $owner, $site, (bool) ($config['per_site'] ?? true)));
