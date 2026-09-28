@@ -6,6 +6,7 @@ namespace RoundlyConsulting\Plausible\Concerns;
 
 use Illuminate\Database\Eloquent\Model;
 use ReflectionClass;
+use RoundlyConsulting\PackageToolkit\Support\Config;
 use RoundlyConsulting\Plausible\Requests\Events\CaptureEventRequest;
 
 /**
@@ -100,7 +101,7 @@ trait Trackable
             props: $this->plausibleEventProps($name),
         );
 
-        if ((bool) config('plausible.tracking.queue', true)) {
+        if (Config::boolean('plausible.tracking.queue', true)) {
             $events->captureQueued($request);
 
             return;

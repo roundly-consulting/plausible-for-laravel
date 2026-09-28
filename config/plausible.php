@@ -81,36 +81,36 @@ return [
 
     'rate_limits' => [
         'stats' => [
-            'enabled' => (bool) env('PLAUSIBLE_STATS_RATELIMIT_ENABLED', true),
+            'enabled' => env('PLAUSIBLE_STATS_RATELIMIT_ENABLED', true),
             'owner' => env('PLAUSIBLE_RATELIMIT_OWNER', 'app'),
             'limit' => (int) env('PLAUSIBLE_STATS_RATELIMIT', 600),
             'per' => env('PLAUSIBLE_STATS_RATELIMIT_PER', 'hour'),
-            'adaptive' => (bool) env('PLAUSIBLE_STATS_RATELIMIT_ADAPTIVE', true),
+            'adaptive' => env('PLAUSIBLE_STATS_RATELIMIT_ADAPTIVE', true),
             'max_wait' => env('PLAUSIBLE_STATS_RATELIMIT_MAX_WAIT'),
             'jitter' => env('PLAUSIBLE_STATS_RATELIMIT_JITTER'),
-            'per_site' => (bool) env('PLAUSIBLE_STATS_RATELIMIT_PER_SITE', false),
+            'per_site' => env('PLAUSIBLE_STATS_RATELIMIT_PER_SITE', false),
         ],
 
         'events' => [
-            'enabled' => (bool) env('PLAUSIBLE_EVENTS_RATELIMIT_ENABLED', true),
+            'enabled' => env('PLAUSIBLE_EVENTS_RATELIMIT_ENABLED', true),
             'owner' => env('PLAUSIBLE_RATELIMIT_OWNER', 'app'),
             'limit' => (int) env('PLAUSIBLE_EVENTS_RATELIMIT', 6000),
             'per' => env('PLAUSIBLE_EVENTS_RATELIMIT_PER', 'minute'),
-            'adaptive' => (bool) env('PLAUSIBLE_EVENTS_RATELIMIT_ADAPTIVE', true),
+            'adaptive' => env('PLAUSIBLE_EVENTS_RATELIMIT_ADAPTIVE', true),
             'max_wait' => env('PLAUSIBLE_EVENTS_RATELIMIT_MAX_WAIT'),
             'jitter' => env('PLAUSIBLE_EVENTS_RATELIMIT_JITTER'),
-            'per_site' => (bool) env('PLAUSIBLE_EVENTS_RATELIMIT_PER_SITE', true),
+            'per_site' => env('PLAUSIBLE_EVENTS_RATELIMIT_PER_SITE', true),
         ],
 
         'sites' => [
-            'enabled' => (bool) env('PLAUSIBLE_SITES_RATELIMIT_ENABLED', true),
+            'enabled' => env('PLAUSIBLE_SITES_RATELIMIT_ENABLED', true),
             'owner' => env('PLAUSIBLE_RATELIMIT_OWNER', 'app'),
             'limit' => (int) env('PLAUSIBLE_SITES_RATELIMIT', 60),
             'per' => env('PLAUSIBLE_SITES_RATELIMIT_PER', 'hour'),
-            'adaptive' => (bool) env('PLAUSIBLE_SITES_RATELIMIT_ADAPTIVE', true),
+            'adaptive' => env('PLAUSIBLE_SITES_RATELIMIT_ADAPTIVE', true),
             'max_wait' => env('PLAUSIBLE_SITES_RATELIMIT_MAX_WAIT'),
             'jitter' => env('PLAUSIBLE_SITES_RATELIMIT_JITTER'),
-            'per_site' => (bool) env('PLAUSIBLE_SITES_RATELIMIT_PER_SITE', false),
+            'per_site' => env('PLAUSIBLE_SITES_RATELIMIT_PER_SITE', false),
         ],
     ],
 
@@ -128,7 +128,7 @@ return [
     */
 
     'tracking' => [
-        'queue' => (bool) env('PLAUSIBLE_TRACKING_QUEUE', true),
+        'queue' => env('PLAUSIBLE_TRACKING_QUEUE', true),
 
         'user_agent' => env('PLAUSIBLE_TRACKING_USER_AGENT', 'PlausibleForLaravel'),
 

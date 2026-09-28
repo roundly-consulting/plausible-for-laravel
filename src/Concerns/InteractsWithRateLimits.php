@@ -30,7 +30,7 @@ trait InteractsWithRateLimits
         /** @var array<string, mixed> $config */
         $config = config(self::rateLimitSectionKey($surface), []);
 
-        if (($config['enabled'] ?? true) === false) {
+        if (! self::flag($config['enabled'] ?? null, true)) {
             return null;
         }
 
@@ -40,9 +40,9 @@ trait InteractsWithRateLimits
         $rateLimit = RateLimits::make(new Limit(
             maxAttempts: (int) ($config['limit'] ?? 600),
             timespan: $timespan,
-        ))->by($this->rateLimitKey($surface, $owner, $site, (bool) ($config['per_site'] ?? $surface === 'events')));
+        ))->by($this->rateLimitKey($surface, $owner, $site, self::flag($config['per_site'] ?? null, $surface === 'events')));
 
-        if (($config['adaptive'] ?? true) === true) {
+        if (self::flag($config['adaptive'] ?? null, true)) {
             $rateLimit->adaptive();
         }
 
@@ -55,6 +55,22 @@ trait InteractsWithRateLimits
         }
 
         return $rateLimit;
+    }
+
+    /**
+     * A boolean flag from a rate-limit block. Env values arrive as strings, so `off`/`no`/`0`
+     * must read false and `on`/`yes`/`1` true — a `(bool)` cast reads every non-empty string
+     * as true. A missing or unparseable value falls back to `$default`.
+     *
+     * @internal
+     */
+    public static function flag(mixed $value, bool $default): bool
+    {
+        if ($value === null) {
+            return $default;
+        }
+
+        return filter_var($value, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE) ?? $default;
     }
 
     /**

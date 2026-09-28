@@ -8,6 +8,7 @@ use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Blade;
 use RoundlyConsulting\PackageToolkit\Package;
 use RoundlyConsulting\PackageToolkit\PackageServiceProvider;
+use RoundlyConsulting\PackageToolkit\Support\Config;
 use RoundlyConsulting\Plausible\Commands\HealthCommand;
 use RoundlyConsulting\Plausible\Http\Middleware\TrackPageview;
 use RoundlyConsulting\Plausible\View\Components\PlausibleScript;
@@ -33,7 +34,7 @@ final class PlausibleServiceProvider extends PackageServiceProvider
                     'API key' => is_string($key) && $key !== '' ? 'SET' : 'MISSING',
                     'Default site' => is_string($site) && $site !== '' ? $site : 'NONE',
                     'Rate limiting' => self::throttledSurfaces(),
-                    'Queued tracking' => config('plausible.tracking.queue', true) !== false ? 'ON' : 'OFF',
+                    'Queued tracking' => Config::boolean('plausible.tracking.queue', true) ? 'ON' : 'OFF',
                 ];
             });
     }
@@ -64,7 +65,7 @@ final class PlausibleServiceProvider extends PackageServiceProvider
 
         $enabled = array_keys(array_filter(
             $surfaces,
-            static fn (array $surface): bool => ($surface['enabled'] ?? true) !== false,
+            static fn (array $surface): bool => Config::for($surface)->boolean('enabled', true),
         ));
 
         return $enabled === [] ? 'OFF' : implode(', ', $enabled);

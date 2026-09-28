@@ -6,6 +6,7 @@ namespace RoundlyConsulting\Plausible\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use RoundlyConsulting\PackageToolkit\Support\Config;
 use RoundlyConsulting\Plausible\Requests\Events\CaptureEventRequest;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -49,7 +50,7 @@ final class TrackPageview
             referrer: $request->headers->get('referer'),
         );
 
-        if ((bool) config('plausible.tracking.queue', true)) {
+        if (Config::boolean('plausible.tracking.queue', true)) {
             $events->captureQueued($capture);
 
             return;
