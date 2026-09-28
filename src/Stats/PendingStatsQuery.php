@@ -241,12 +241,13 @@ final class PendingStatsQuery
         return $this;
     }
 
+    /**
+     * A custom range from `$start` through today (the app's timezone), so both APIs get
+     * a closed range: v1 `period=custom&date=start,today`, v2 `date_range: [start, today]`.
+     */
     public function since(Carbon $start): self
     {
-        $this->start = $start;
-        $this->period = Period::Custom;
-
-        return $this;
+        return $this->between($start, Carbon::today());
     }
 
     public function compare(bool $compare = true): self

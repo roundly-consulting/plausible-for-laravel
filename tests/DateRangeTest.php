@@ -5,10 +5,10 @@ declare(strict_types=1);
 use Illuminate\Support\Carbon;
 use RoundlyConsulting\Plausible\Requests\Stats\AggregateRequest;
 
-it('formats a single start date', function () {
+it('formats a single anchor date for a non-custom period', function () {
     $query = AggregateRequest::make(
         site: 'localhost',
-        period: 'custom',
+        period: 'day',
         start: Carbon::parse('2023-02-01'),
     )->toQuery()->toArray();
 
