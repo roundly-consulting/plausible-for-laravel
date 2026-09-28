@@ -28,4 +28,24 @@ Initial public release.
   `GoalType`) with the enums-for-laravel helper surface.
 - Client-side rate limiting per surface (stats, events, sites) with adaptive backoff on
   Plausible's `Retry-After`.
-- `Plausible::fake()` with assertions for captured events, queries, sites, goals and shared links.
+- `Plausible::events()->event($name, url:, props:, revenue:, site:, referrer:, interactive:)` — a
+  custom-event shortcut that defaults the site like `pageview()`.
+- `Plausible::script(?$domain)` returns the tracking-script tag as an `HtmlString` for Inertia or
+  any PHP view; the `@plausibleScript` directive and `<x-plausible-script>` component render it.
+- `Plausible::fake()` — a real static on the facade returning `Testing\PlausibleFake`, a subtype
+  of `PlausibleManager` installed behind the facade and in the container (so `plausible()`, the
+  `Trackable` trait and the middleware are recorded too). Asserts for captured events, queries,
+  sites, goals and shared links, each with a negative twin (`assertSiteNotCreated`,
+  `assertSiteNotDeleted`, `assertSiteNotUpdated`, `assertGoalNotCreated`, `assertGoalNotDeleted`,
+  `assertSharedLinkNotCreated`).
+
+### Changed
+
+- The facade root is `RoundlyConsulting\Plausible\PlausibleManager` (was
+  `RoundlyConsulting\Plausible\Plausible`, which shared the facade's short name); it takes the
+  container in its constructor and `fake()` moved from it to the facade.
+- `sites()->create()` returns a `SiteResult`; `sites()->delete()` and `goals()->delete()` return
+  `bool` instead of the raw HTTP response.
+- `Support\ScriptTag` is internal — use `Plausible::script()`.
+- Outbound rate limits are built through the `RateLimits` facade of
+  http-client-rate-limits-for-laravel.

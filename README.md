@@ -143,17 +143,41 @@ conversion numbers inside their own admin instead of a separate tool.
 
 ## Usage
 
-You can reach the client three ways — the `plausible()` helper, the `Plausible` facade, or by
-resolving `RoundlyConsulting\Plausible\Plausible` from the container. All three return the same
-instance and expose `stats()`, `events()`, and `sites()`.
+Use the `Plausible` facade. It exposes one resource client per API area — `stats()`,
+`events()`, `sites()`, `goals()`, `sharedLinks()` — plus `script()`, `ping()` and `health()`:
 
 ```php
 use RoundlyConsulting\Plausible\Facades\Plausible;
 
-plausible()->stats();      // helper
-Plausible::stats();        // facade
-app(\RoundlyConsulting\Plausible\Plausible::class)->stats(); // container
+Plausible::stats()->for('my-site.com')->last7Days()->aggregate();
+Plausible::events()->fromRequest(request())->event('Signup', url: url('/register'));
+Plausible::script();   // the <script> tag, for any view
 ```
+
+#### Without the facade
+
+The facade is sugar over `RoundlyConsulting\Plausible\PlausibleManager`, a container singleton.
+Inject it (or call the `plausible()` helper, which returns the same instance):
+
+```php
+use RoundlyConsulting\Plausible\PlausibleManager;
+
+final class DashboardController
+{
+    public function __construct(private PlausibleManager $plausible) {}
+
+    public function __invoke()
+    {
+        return $this->plausible->stats()->for('my-site.com')->last30Days()->aggregate();
+    }
+}
+
+plausible()->sites()->list();
+```
+
+Plausible is a remote API, so there are no action classes: each area is a resource client
+(`Repositories\StatsRepository`, `EventsRepository`, …) resolved from the container, which you
+can also inject or rebind directly.
 
 ### Stats API — fluent
 
@@ -344,6 +368,15 @@ use RoundlyConsulting\Plausible\DataTransferObjects\Revenue;
 // Lift the visitor from the current request, send a pageview in one call
 Plausible::events()->fromRequest(request())->pageview('https://my-site.com/blog/x');
 
+// A custom event (goal) in one call — the site defaults to plausible.site
+Plausible::events()->fromRequest(request())->event(
+    'Signup',
+    url: 'https://my-site.com/register',
+    props: ['plan' => 'pro'],
+    revenue: Revenue::of('49.00', 'EUR'),   // optional
+    site: null,                              // optional override
+);
+
 // A custom revenue event, fired on the queue so it never blocks the response
 Plausible::events()
     ->fromRequest(request())
@@ -366,7 +399,9 @@ Plausible::events()
     ));
 ```
 
-`fromRequest()` and `pageview()` use the configured default site when none is given.
+`pageview()` and `event()` use the configured default site (`plausible.site`) when none is
+given, and throw `MissingConfiguration` when there is none. `event()` also takes `referrer:` and
+`interactive:`.
 `captureQueued()` dispatches `RoundlyConsulting\Plausible\Jobs\CaptureEventJob` onto your queue.
 
 #### Revenue
@@ -469,7 +504,7 @@ use RoundlyConsulting\Plausible\Facades\Plausible;
 use RoundlyConsulting\Plausible\Requests\Sites\CreateSiteRequest;
 use RoundlyConsulting\Plausible\Requests\Sites\UpdateSiteRequest;
 
-Plausible::sites()->create(CreateSiteRequest::make(
+$site = Plausible::sites()->create(CreateSiteRequest::make(   // -> SiteResult
     domain: 'my.domain.tld',
     timezone: 'Europe/Bratislava',
 ));
@@ -482,11 +517,11 @@ Plausible::sites()->update(UpdateSiteRequest::make(
     domain: 'new.domain.tld',
 ));
 
-Plausible::sites()->delete('my.domain.tld');
+$deleted = Plausible::sites()->delete('my.domain.tld');   // -> bool
 ```
 
-`get`, `list` and `update` return typed `SiteResult` objects; `create` and `delete` return the
-raw `Response`.
+`create`, `get`, `list` and `update` return typed `SiteResult` objects; `delete` returns `true`
+unless Plausible answers `deleted: false`. A failed request throws.
 
 ### Goals API
 
@@ -500,7 +535,7 @@ $goal = Plausible::goals()->create(CreateGoalRequest::event('my-site.com', 'Sign
 Plausible::goals()->create(CreateGoalRequest::page('my-site.com', '/checkout'));
 
 $goals = Plausible::goals()->list('my-site.com');         // -> list<GoalResult>
-Plausible::goals()->delete('my-site.com', $goal->id);
+Plausible::goals()->delete('my-site.com', $goal->id);     // -> bool
 ```
 
 ### Shared links API
@@ -533,6 +568,16 @@ standard `<script>` tag built from your config (`script.domain` / `script.src`):
 <x-plausible-script />
 <x-plausible-script domain="my-site.com" />
 ```
+
+Outside Blade — Inertia, a PHP template, a JSON payload — ask the facade for the same tag:
+
+```php
+Plausible::script();                // HtmlString; empty when no domain is configured
+Plausible::script('my-site.com');   // explicit domain
+```
+
+The directive and the component render `Plausible::script()`, so rebinding the manager changes
+all three.
 
 ### Health check
 
@@ -647,7 +692,10 @@ for an account-wide 600/hr quota), point the limiter's store at Cache/Redis/Data
 ## Testing
 
 In your application's tests, swap the client into a recording fake with `Plausible::fake()` —
-no real HTTP — then assert on what was captured or queried:
+no real HTTP. It replaces the facade root **and** the container binding, so an injected
+`PlausibleManager`, `plausible()`, the `Trackable` trait and the `plausible.track` middleware are
+all recorded. Site create/delete and goal delete answer with canned typed results. Then assert on
+what was captured, queried or provisioned:
 
 ```php
 use RoundlyConsulting\Money\Money;
@@ -667,10 +715,18 @@ Plausible::assertQueried(fn ($request, string $type) => $type === 'aggregate');
 Plausible::assertSiteCreated('new-tenant.com');
 ```
 
-Available assertions: `assertEventCaptured`, `assertEventNotCaptured`, `assertNothingCaptured`,
-`assertEventCapturedCount`, `assertQueried`, `assertNothingQueried`, `assertSiteCreated`,
-`assertSiteDeleted`, `assertSiteUpdated`, `assertGoalCreated`, `assertGoalDeleted`,
-`assertSharedLinkCreated`.
+Available assertions, each with its negative twin:
+
+| Assert | Negative |
+|---|---|
+| `assertEventCaptured(?callable)`, `assertEventCapturedCount(int)` | `assertEventNotCaptured(?callable)`, `assertNothingCaptured()` |
+| `assertQueried(?callable)` | `assertNothingQueried()` |
+| `assertSiteCreated(?domain)` | `assertSiteNotCreated(?domain)` |
+| `assertSiteDeleted(domain)` | `assertSiteNotDeleted(?domain)` |
+| `assertSiteUpdated(domain)` | `assertSiteNotUpdated(?domain)` |
+| `assertGoalCreated(?site)` | `assertGoalNotCreated(?site)` |
+| `assertGoalDeleted(site, goalId)` | `assertGoalNotDeleted(?site, ?goalId)` |
+| `assertSharedLinkCreated(?site)` | `assertSharedLinkNotCreated(?site)` |
 
 Run the package's own test suite with:
 
