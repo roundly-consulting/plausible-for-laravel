@@ -11,7 +11,8 @@ use RoundlyConsulting\Plausible\PlausibleManager;
 /**
  * Renders the hosted Plausible tracking script: `<x-plausible-script />`.
  * Pass `:domain` to override the configured site/domain. Renders
- * `Plausible::script()`, so a host override of the manager applies here too.
+ * `Plausible::script()` — the publishable `plausible::components.script` view — so a
+ * host override of the manager or a published view applies here too.
  */
 final class PlausibleScript extends Component
 {

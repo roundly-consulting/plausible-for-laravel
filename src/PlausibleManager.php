@@ -59,7 +59,9 @@ class PlausibleManager
     /**
      * The hosted Plausible tracking-script tag, for Blade, Inertia or any PHP view. The
      * domain defaults to `plausible.script.domain`, then `plausible.site`; with neither set
-     * this is an empty string. `@plausibleScript` and `<x-plausible-script>` render this.
+     * this is an empty string. Renders the `plausible::components.script` view (publish it
+     * with the `plausible-views` tag to customise the markup); `@plausibleScript` and
+     * `<x-plausible-script>` render this.
      */
     public function script(?string $domain = null): HtmlString
     {
