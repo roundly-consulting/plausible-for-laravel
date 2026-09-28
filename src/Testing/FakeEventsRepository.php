@@ -31,18 +31,26 @@ final class FakeEventsRepository extends EventsRepository
         return parent::capture($request);
     }
 
+    /**
+     * Records instead of dispatching — but refuses a missing visitor exactly like the real
+     * client, so a test cannot pass for code that throws in production.
+     */
     public function captureQueued(CaptureEventRequest $request): void
     {
+        $this->requireVisitor();
+
         $this->fake->recordEvent($request);
     }
 
     public function captureManyQueued(iterable $events): Batch
     {
+        $this->requireVisitor();
+
         $jobs = [];
 
         foreach ($events as $event) {
             $this->fake->recordEvent($event);
-            $jobs[] = new CaptureEventJob($event, 'fake', 'fake');
+            $jobs[] = new CaptureEventJob($event, $this->visitorUserAgent, $this->visitorIpAddress);
         }
 
         return Bus::batch($jobs)->name('plausible:capture')->dispatch();

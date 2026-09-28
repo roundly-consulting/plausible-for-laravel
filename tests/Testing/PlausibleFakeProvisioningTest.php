@@ -31,7 +31,7 @@ it('records queued batch captures through the fake', function () {
     Bus::fake();
     Plausible::fake();
 
-    Plausible::events()->captureManyQueued([
+    Plausible::events()->setVisitor('Agent/1.0', '1.2.3.4')->captureManyQueued([
         CaptureEventRequest::make(site: 'a.test', url: 'https://a.test/1'),
         CaptureEventRequest::make(site: 'a.test', url: 'https://a.test/2'),
     ]);

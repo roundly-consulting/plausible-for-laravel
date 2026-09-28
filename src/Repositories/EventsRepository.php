@@ -102,9 +102,7 @@ class EventsRepository extends Repository
      */
     public function captureQueued(CaptureEventRequest $request): void
     {
-        if (is_null($this->visitorUserAgent) || is_null($this->visitorIpAddress)) {
-            throw UniqueVisitorIdentifierRequired::error();
-        }
+        $this->requireVisitor();
 
         CaptureEventJob::dispatch($request, $this->visitorUserAgent, $this->visitorIpAddress);
     }
@@ -134,9 +132,7 @@ class EventsRepository extends Repository
      */
     public function captureManyQueued(iterable $events): Batch
     {
-        if (is_null($this->visitorUserAgent) || is_null($this->visitorIpAddress)) {
-            throw UniqueVisitorIdentifierRequired::error();
-        }
+        $this->requireVisitor();
 
         $jobs = [];
 
@@ -148,14 +144,28 @@ class EventsRepository extends Repository
     }
 
     /**
+     * Plausible needs the visitor's user-agent and IP to count unique visitors, so every
+     * capture path refuses to run without them.
+     *
+     * @phpstan-assert !null $this->visitorUserAgent
+     * @phpstan-assert !null $this->visitorIpAddress
+     *
+     * @throws UniqueVisitorIdentifierRequired
+     */
+    protected function requireVisitor(): void
+    {
+        if (is_null($this->visitorUserAgent) || is_null($this->visitorIpAddress)) {
+            throw UniqueVisitorIdentifierRequired::error();
+        }
+    }
+
+    /**
      * The Events API is unauthenticated: no API key is required, and none is sent. The
      * visitor's user-agent and IP travel as headers so Plausible can count unique visitors.
      */
     protected function request(bool $throw = true): PendingRequest
     {
-        if (is_null($this->visitorUserAgent) || is_null($this->visitorIpAddress)) {
-            throw UniqueVisitorIdentifierRequired::error();
-        }
+        $this->requireVisitor();
 
         return $this->client($throw)
             ->withHeaders([
