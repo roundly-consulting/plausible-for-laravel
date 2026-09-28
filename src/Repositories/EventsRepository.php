@@ -147,13 +147,17 @@ class EventsRepository extends Repository
         return Bus::batch($jobs)->name('plausible:capture')->dispatch();
     }
 
+    /**
+     * The Events API is unauthenticated: no API key is required, and none is sent. The
+     * visitor's user-agent and IP travel as headers so Plausible can count unique visitors.
+     */
     protected function request(bool $throw = true): PendingRequest
     {
         if (is_null($this->visitorUserAgent) || is_null($this->visitorIpAddress)) {
             throw UniqueVisitorIdentifierRequired::error();
         }
 
-        return parent::request($throw)
+        return $this->client($throw)
             ->withHeaders([
                 'User-Agent' => $this->visitorUserAgent,
                 'X-Forwarded-For' => $this->visitorIpAddress,

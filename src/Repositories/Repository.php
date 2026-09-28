@@ -14,26 +14,36 @@ abstract class Repository
     use InteractsWithRateLimits;
 
     /**
-     * Build the base client. Throttled surfaces pass `throw: false` so the
-     * limiter callback can return the raw 429 for hcrl to read `Retry-After`;
+     * The authenticated client for the Stats and Sites APIs: the base client plus the
+     * API key as a Bearer token. Throttled surfaces pass `throw: false` so the limiter
+     * callback can return the raw 429 for hcrl to read `Retry-After`;
      * `Response::throw()` is then applied after the limiter (see the concern).
      */
     protected function request(bool $throw = true): PendingRequest
     {
-        $url = config('plausible.url');
+        $client = $this->client($throw);
         $key = config('plausible.key');
-
-        if (! is_string($url) || $url === '') {
-            throw MissingConfiguration::url();
-        }
 
         if (! is_string($key) || $key === '') {
             throw MissingConfiguration::key();
         }
 
-        $request = Http::baseUrl($url)
-            ->withToken($key)
-            ->timeout($this->timeout());
+        return $client->withToken($key);
+    }
+
+    /**
+     * The unauthenticated base client: instance URL, timeout and retries. The Events API
+     * builds on this directly — Plausible's `/api/event` takes no API key.
+     */
+    protected function client(bool $throw = true): PendingRequest
+    {
+        $url = config('plausible.url');
+
+        if (! is_string($url) || $url === '') {
+            throw MissingConfiguration::url();
+        }
+
+        $request = Http::baseUrl($url)->timeout($this->timeout());
 
         if ($throw) {
             $request->throw();

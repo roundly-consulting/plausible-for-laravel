@@ -17,8 +17,8 @@ final class MissingConfiguration extends PlausibleException
     public static function key(): self
     {
         return new self(
-            'Missing Plausible API key. Set `PLAUSIBLE_API_KEY` (or `plausible.key`) to '.
-            'an API key from your Plausible account.'
+            'Missing Plausible API key. The Stats and Sites APIs need one: set '.
+            '`PLAUSIBLE_API_KEY` (or `plausible.key`) to an API key from your Plausible account.'
         );
     }
 

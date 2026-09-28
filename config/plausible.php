@@ -9,7 +9,8 @@ return [
     |--------------------------------------------------------------------------
     |
     | Base URL of your Plausible instance (Cloud or self-hosted) and the API key
-    | used as a Bearer token on Stats and Sites requests.
+    | sent as a Bearer token on Stats and Sites requests. Event capture (the
+    | Events API) is unauthenticated: it needs only the URL and never sends the key.
     |
     */
 
