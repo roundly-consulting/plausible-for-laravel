@@ -50,27 +50,18 @@ class SitesRepository extends Repository
     }
 
     /**
-     * List the sites in the account.
+     * List every site the key's team owns, following Plausible's `meta.after` cursor
+     * through all pages (100 sites per page).
      *
      * @return list<SiteResult>
      */
     public function list(): array
     {
-        $sites = $this->throttled(
-            'sites',
-            null,
-            fn (): Response => $this->request(throw: false)->get('/api/v1/sites'),
-        )->json('sites');
-
-        if (! is_array($sites)) {
-            return [];
-        }
-
-        return array_values(array_map(
+        return array_map(
             /** @param array<string, mixed> $site */
             static fn (array $site): SiteResult => SiteResult::fromArray($site),
-            array_filter($sites, 'is_array'),
-        ));
+            $this->paginate('/api/v1/sites', 'sites', null),
+        );
     }
 
     public function update(UpdateSiteRequest $request): SiteResult

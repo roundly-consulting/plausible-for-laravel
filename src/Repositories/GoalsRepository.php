@@ -29,26 +29,18 @@ class GoalsRepository extends Repository
     }
 
     /**
+     * List every goal of a site, following Plausible's `meta.after` cursor through all
+     * pages (100 goals per page).
+     *
      * @return list<GoalResult>
      */
     public function list(string $site): array
     {
-        $goals = $this->throttled(
-            'sites',
-            $site,
-            fn (): Response => $this->request(throw: false)
-                ->get('/api/v1/sites/goals', ['site_id' => $site]),
-        )->json('goals');
-
-        if (! is_array($goals)) {
-            return [];
-        }
-
-        return array_values(array_map(
+        return array_map(
             /** @param array<string, mixed> $goal */
             static fn (array $goal): GoalResult => GoalResult::fromArray($goal),
-            array_filter($goals, 'is_array'),
-        ));
+            $this->paginate('/api/v1/sites/goals', 'goals', $site, ['site_id' => $site]),
+        );
     }
 
     /**

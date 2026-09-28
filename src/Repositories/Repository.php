@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Plausible\Repositories;
 
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RoundlyConsulting\Plausible\Concerns\InteractsWithRateLimits;
 use RoundlyConsulting\Plausible\Exceptions\MissingConfiguration;
@@ -54,6 +55,45 @@ abstract class Repository
         }
 
         return $request;
+    }
+
+    /**
+     * Walk a cursor-paginated Sites API list endpoint: follow `meta.after` until Plausible
+     * answers null (or repeats a cursor), collecting each page's `$key` rows. Every page
+     * goes through the `sites` rate limiter.
+     *
+     * @param  array<string, string>  $query
+     * @return list<array<array-key, mixed>>
+     */
+    protected function paginate(string $path, string $key, ?string $site, array $query = []): array
+    {
+        $rows = [];
+        $seen = [];
+        $after = null;
+
+        do {
+            $params = $after === null ? $query : [...$query, 'after' => $after];
+
+            $response = $this->throttled(
+                'sites',
+                $site,
+                fn (): Response => $this->request(throw: false)->get($path, $params),
+            );
+
+            $page = $response->json($key);
+
+            foreach (is_array($page) ? $page : [] as $row) {
+                if (is_array($row)) {
+                    $rows[] = $row;
+                }
+            }
+
+            $seen[] = $after;
+            $next = $response->json('meta.after');
+            $after = is_string($next) && $next !== '' && ! in_array($next, $seen, true) ? $next : null;
+        } while ($after !== null);
+
+        return $rows;
     }
 
     /**
