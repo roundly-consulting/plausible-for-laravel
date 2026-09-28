@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Plausible\Testing;
 
+use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Assert;
-use RoundlyConsulting\Plausible\Plausible;
+use RoundlyConsulting\Plausible\PlausibleManager;
 use RoundlyConsulting\Plausible\Repositories\EventsRepository;
 use RoundlyConsulting\Plausible\Repositories\GoalsRepository;
 use RoundlyConsulting\Plausible\Repositories\SharedLinksRepository;
@@ -19,15 +20,17 @@ use RoundlyConsulting\Plausible\Requests\Sites\CreateSiteRequest;
 use RoundlyConsulting\Plausible\Requests\Sites\UpdateSiteRequest;
 
 /**
- * A recording, still-offline variant of {@see Plausible} for host-app tests.
- * Calls run as usual but hit a faked HTTP layer, while the fake records intent
- * so assertions can verify it — mirroring Laravel's `*::fake()` ergonomics (see
- * {@see Plausible::fake()}).
+ * A recording, still-offline variant of {@see PlausibleManager} for host-app tests,
+ * installed by `Plausible::fake()` behind the facade and in the container. It extends the
+ * manager, so constructor-injected managers, `plausible()`, the `Trackable` trait and the
+ * `TrackPageview` middleware all reach it. Reads run against a stubbed HTTP layer; site
+ * create/delete and goal delete send nothing and return canned typed results. Every
+ * mutating call is recorded for the `assert*` methods below.
  *
  * It lives in src/ so host apps can use it; it depends only on PHPUnit's Assert,
  * always present in a Laravel app's dev dependencies.
  */
-final class PlausibleFake extends Plausible
+final class PlausibleFake extends PlausibleManager
 {
     /** @var list<CaptureEventRequest> */
     private array $capturedEvents = [];
@@ -53,8 +56,10 @@ final class PlausibleFake extends Plausible
     /** @var list<CreateSharedLinkRequest> */
     private array $sharedLinksCreated = [];
 
-    public function __construct()
+    public function __construct(Container $container)
     {
+        parent::__construct($container);
+
         if (! is_string(config('plausible.url')) || config('plausible.url') === '') {
             config()->set('plausible.url', 'https://plausible.test');
         }
@@ -93,41 +98,65 @@ final class PlausibleFake extends Plausible
         return new FakeSharedLinksRepository($this);
     }
 
+    /**
+     * @internal a hook for the fake repositories
+     */
     public function recordEvent(CaptureEventRequest $request): void
     {
         $this->capturedEvents[] = $request;
     }
 
+    /**
+     * @internal a hook for the fake repositories
+     */
     public function recordQuery(string $type, mixed $request): void
     {
         $this->queries[] = ['type' => $type, 'request' => $request];
     }
 
+    /**
+     * @internal a hook for the fake repositories
+     */
     public function recordSiteCreated(CreateSiteRequest $request): void
     {
         $this->sitesCreated[] = $request;
     }
 
+    /**
+     * @internal a hook for the fake repositories
+     */
     public function recordSiteDeleted(string $site): void
     {
         $this->sitesDeleted[] = $site;
     }
 
+    /**
+     * @internal a hook for the fake repositories
+     */
     public function recordSiteUpdated(UpdateSiteRequest $request): void
     {
         $this->sitesUpdated[] = $request;
     }
 
+    /**
+     * @internal a hook for the fake repositories
+     */
     public function recordGoalCreated(CreateGoalRequest $request): void
     {
         $this->goalsCreated[] = $request;
     }
 
+    /**
+     * @internal a hook for the fake repositories
+     */
     public function recordGoalDeleted(string $site, int|string $goalId): void
     {
         $this->goalsDeleted[] = $site.'|'.$goalId;
     }
 
+    /**
+     * @internal a hook for the fake repositories
+     */
     public function recordSharedLinkCreated(CreateSharedLinkRequest $request): void
     {
         $this->sharedLinksCreated[] = $request;
@@ -268,6 +297,94 @@ final class PlausibleFake extends Plausible
             $site,
             array_map(static fn (CreateSharedLinkRequest $request): string => $request->site, $this->sharedLinksCreated),
             "Expected a shared link to be created for site [{$site}], but none was.",
+        );
+    }
+
+    public function assertSiteNotCreated(?string $domain = null): void
+    {
+        if ($domain === null) {
+            Assert::assertEmpty($this->sitesCreated, 'Expected no site to be created, but some were.');
+
+            return;
+        }
+
+        Assert::assertNotContains(
+            $domain,
+            array_map(static fn (CreateSiteRequest $request): string => $request->domain, $this->sitesCreated),
+            "Expected site [{$domain}] not to be created, but it was.",
+        );
+    }
+
+    public function assertSiteNotDeleted(?string $domain = null): void
+    {
+        if ($domain === null) {
+            Assert::assertEmpty($this->sitesDeleted, 'Expected no site to be deleted, but some were.');
+
+            return;
+        }
+
+        Assert::assertNotContains($domain, $this->sitesDeleted, "Expected site [{$domain}] not to be deleted, but it was.");
+    }
+
+    public function assertSiteNotUpdated(?string $domain = null): void
+    {
+        if ($domain === null) {
+            Assert::assertEmpty($this->sitesUpdated, 'Expected no site to be updated, but some were.');
+
+            return;
+        }
+
+        Assert::assertNotContains(
+            $domain,
+            array_map(static fn (UpdateSiteRequest $request): string => $request->site, $this->sitesUpdated),
+            "Expected site [{$domain}] not to be updated, but it was.",
+        );
+    }
+
+    public function assertGoalNotCreated(?string $site = null): void
+    {
+        if ($site === null) {
+            Assert::assertEmpty($this->goalsCreated, 'Expected no goal to be created, but some were.');
+
+            return;
+        }
+
+        Assert::assertNotContains(
+            $site,
+            array_map(static fn (CreateGoalRequest $request): string => $request->site, $this->goalsCreated),
+            "Expected no goal to be created for site [{$site}], but one was.",
+        );
+    }
+
+    public function assertGoalNotDeleted(?string $site = null, int|string|null $goalId = null): void
+    {
+        $matching = array_filter(
+            $this->goalsDeleted,
+            static function (string $deleted) use ($site, $goalId): bool {
+                [$deletedSite, $deletedId] = explode('|', $deleted, 2);
+
+                return ($site === null || $deletedSite === $site)
+                    && ($goalId === null || $deletedId === (string) $goalId);
+            },
+        );
+
+        Assert::assertEmpty($matching, $site === null && $goalId === null
+            ? 'Expected no goal to be deleted, but some were.'
+            : 'Expected no matching goal to be deleted, but one was.');
+    }
+
+    public function assertSharedLinkNotCreated(?string $site = null): void
+    {
+        if ($site === null) {
+            Assert::assertEmpty($this->sharedLinksCreated, 'Expected no shared link to be created, but some were.');
+
+            return;
+        }
+
+        Assert::assertNotContains(
+            $site,
+            array_map(static fn (CreateSharedLinkRequest $request): string => $request->site, $this->sharedLinksCreated),
+            "Expected no shared link to be created for site [{$site}], but one was.",
         );
     }
 }

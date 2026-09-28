@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Plausible\Results;
 
-use RoundlyConsulting\Plausible\Plausible;
+use RoundlyConsulting\Plausible\PlausibleManager;
 
 /**
  * Outcome of a configuration + connectivity health check (see
- * {@see Plausible::health()}).
+ * {@see PlausibleManager::health()}).
  */
 final readonly class HealthResult
 {

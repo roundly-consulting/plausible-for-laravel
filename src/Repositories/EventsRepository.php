@@ -9,6 +9,7 @@ use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Bus;
+use RoundlyConsulting\Plausible\DataTransferObjects\Revenue;
 use RoundlyConsulting\Plausible\Exceptions\MissingConfiguration;
 use RoundlyConsulting\Plausible\Exceptions\UniqueVisitorIdentifierRequired;
 use RoundlyConsulting\Plausible\Jobs\CaptureEventJob;
@@ -62,6 +63,38 @@ class EventsRepository extends Repository
         }
 
         return $this->capture(CaptureEventRequest::make(site: $site, url: $url, name: 'pageview'));
+    }
+
+    /**
+     * Record a custom event (a goal such as "Signup"), using the configured default site
+     * when none is provided — the custom-event twin of {@see pageview()}.
+     *
+     * @param  array<string, mixed>  $props  custom properties
+     */
+    public function event(
+        string $name,
+        string $url,
+        array $props = [],
+        ?Revenue $revenue = null,
+        ?string $site = null,
+        ?string $referrer = null,
+        bool $interactive = true,
+    ): Response {
+        $site ??= $this->defaultSite();
+
+        if ($site === null) {
+            throw MissingConfiguration::site();
+        }
+
+        return $this->capture(CaptureEventRequest::make(
+            site: $site,
+            url: $url,
+            name: $name,
+            referrer: $referrer,
+            props: $props,
+            revenue: $revenue,
+            interactive: $interactive,
+        ));
     }
 
     /**

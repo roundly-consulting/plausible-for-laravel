@@ -15,6 +15,8 @@ use RoundlyConsulting\Plausible\Results\QueryResult;
 /**
  * Recording {@see StatsRepository} used by {@see PlausibleFake}. It records each
  * query for later assertions, then performs the (faked) HTTP call.
+ *
+ * @internal
  */
 final class FakeStatsRepository extends StatsRepository
 {

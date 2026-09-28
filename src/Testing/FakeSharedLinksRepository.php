@@ -10,6 +10,8 @@ use RoundlyConsulting\Plausible\Results\SharedLinkResult;
 
 /**
  * Recording {@see SharedLinksRepository} used by {@see PlausibleFake}.
+ *
+ * @internal
  */
 final class FakeSharedLinksRepository extends SharedLinksRepository
 {

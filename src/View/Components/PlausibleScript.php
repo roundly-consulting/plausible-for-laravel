@@ -6,11 +6,12 @@ namespace RoundlyConsulting\Plausible\View\Components;
 
 use Illuminate\Support\HtmlString;
 use Illuminate\View\Component;
-use RoundlyConsulting\Plausible\Support\ScriptTag;
+use RoundlyConsulting\Plausible\PlausibleManager;
 
 /**
  * Renders the hosted Plausible tracking script: `<x-plausible-script />`.
- * Pass `:domain` to override the configured site/domain.
+ * Pass `:domain` to override the configured site/domain. Renders
+ * `Plausible::script()`, so a host override of the manager applies here too.
  */
 final class PlausibleScript extends Component
 {
@@ -20,6 +21,6 @@ final class PlausibleScript extends Component
 
     public function render(): HtmlString
     {
-        return ScriptTag::render($this->domain);
+        return app(PlausibleManager::class)->script($this->domain);
     }
 }

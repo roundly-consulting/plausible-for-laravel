@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RoundlyConsulting\Plausible\Enums\GoalType;
 use RoundlyConsulting\Plausible\Requests\Sites\CreateGoalRequest;
@@ -71,9 +70,9 @@ it('returns an empty list when the goals payload is missing', function () {
 it('deletes a goal', function () {
     Http::fake(['*' => Http::response('', 204)]);
 
-    $response = plausible()->goals()->delete('localhost', 42);
+    $deleted = plausible()->goals()->delete('localhost', 42);
 
-    expect($response)->toBeInstanceOf(Response::class);
+    expect($deleted)->toBeTrue();
 
     Http::assertSent(
         fn ($request) => $request->method() === 'DELETE'
@@ -88,4 +87,11 @@ it('parses goal results from arbitrary arrays', function () {
         ->and($goal->goalType)->toBeNull()
         ->and($goal->eventName)->toBeNull()
         ->and($goal->pagePath)->toBeNull();
+});
+
+it('reads the deleted flag of a goal deletion', function () {
+    Http::fake(['*' => Http::sequence()->push(['deleted' => true])->push(['deleted' => false])]);
+
+    expect(plausible()->goals()->delete('localhost', 1))->toBeTrue()
+        ->and(plausible()->goals()->delete('localhost', 2))->toBeFalse();
 });

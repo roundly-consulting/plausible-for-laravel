@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use RoundlyConsulting\Money\Money;
 use RoundlyConsulting\Plausible\Exceptions\PlausibleException;
-use RoundlyConsulting\Plausible\Plausible;
+use RoundlyConsulting\Plausible\PlausibleManager;
 use RoundlyConsulting\Plausible\Repositories\EventsRepository;
 use RoundlyConsulting\Plausible\Repositories\GoalsRepository;
 use RoundlyConsulting\Plausible\Repositories\SharedLinksRepository;
@@ -22,13 +22,13 @@ ArchPresets::strictTypes('RoundlyConsulting\Plausible');
  *  - the five repositories — the package's own Fake* counterparts in src/Testing extend
  *    them, which is how `Plausible::fake()` works. `final` would break a feature this
  *    package ships.
- *  - Plausible — PlausibleFake extends it, same reason.
+ *  - PlausibleManager — PlausibleFake extends it, same reason.
  *  - PlausibleException — the base every plausible error extends, so a host can catch the
  *    whole surface with one type.
  */
 ArchPresets::finalByDefault('RoundlyConsulting\Plausible')
     ->ignoring([
-        Plausible::class,
+        PlausibleManager::class,
         StatsRepository::class,
         EventsRepository::class,
         SitesRepository::class,
@@ -105,3 +105,10 @@ it('finds money internals to guard', function () use ($moneyInternals) {
 arch('plausible never imports a money @internal class')
     ->expect('RoundlyConsulting\Plausible')
     ->not->toUse($moneyInternals);
+
+/**
+ * Model traits delegate to the manager, never to an action, so `Plausible::fake()` sees
+ * every call. `Concerns\Trackable` reaches the API through `plausible()` (the manager);
+ * the package has no `Actions` namespace, so this pins that it stays that way.
+ */
+ArchPresets::modelsGoThroughTheFacade('RoundlyConsulting\Plausible');

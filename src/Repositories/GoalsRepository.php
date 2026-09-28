@@ -51,13 +51,17 @@ class GoalsRepository extends Repository
         ));
     }
 
-    public function delete(string $site, int|string $goalId): Response
+    /**
+     * Delete a goal. True unless Plausible answers `deleted: false`
+     * (an empty 2xx counts as deleted); a failed request throws.
+     */
+    public function delete(string $site, int|string $goalId): bool
     {
         return $this->throttled(
             'sites',
             $site,
             fn (): Response => $this->request(throw: false)
                 ->delete('/api/v1/sites/goals/'.$goalId, ['site_id' => $site]),
-        );
+        )->json('deleted') !== false;
     }
 }

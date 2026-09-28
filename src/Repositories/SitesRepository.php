@@ -11,24 +11,30 @@ use RoundlyConsulting\Plausible\Results\SiteResult;
 
 class SitesRepository extends Repository
 {
-    public function create(CreateSiteRequest $request): Response
+    public function create(CreateSiteRequest $request): SiteResult
     {
-        return $this->throttled(
-            'sites',
-            $request->domain,
-            fn (): Response => $this->request(throw: false)
-                ->post('/api/v1/sites', $request->toQuery()->toArray()),
+        return SiteResult::fromResponse(
+            $this->throttled(
+                'sites',
+                $request->domain,
+                fn (): Response => $this->request(throw: false)
+                    ->post('/api/v1/sites', $request->toQuery()->toArray()),
+            ),
         );
     }
 
-    public function delete(string $site): Response
+    /**
+     * Delete a site and all of its data. True unless Plausible answers `deleted: false`
+     * (an empty 2xx counts as deleted); a failed request throws.
+     */
+    public function delete(string $site): bool
     {
         return $this->throttled(
             'sites',
             $site,
             fn (): Response => $this->request(throw: false)
                 ->delete('/api/v1/sites/'.$site),
-        );
+        )->json('deleted') !== false;
     }
 
     public function get(string $site): SiteResult

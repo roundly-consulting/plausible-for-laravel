@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-use RoundlyConsulting\Plausible\Plausible;
+use RoundlyConsulting\Plausible\PlausibleManager;
 
 if (! function_exists('plausible')) {
-    function plausible(): Plausible
+    function plausible(): PlausibleManager
     {
-        return resolve(Plausible::class);
+        return resolve(PlausibleManager::class);
     }
 }

@@ -42,7 +42,7 @@ final class PlausibleServiceProvider extends PackageServiceProvider
     {
         parent::register();
 
-        $this->app->singleton(Plausible::class);
+        $this->app->singleton(PlausibleManager::class);
     }
 
     public function boot(): void
@@ -72,7 +72,7 @@ final class PlausibleServiceProvider extends PackageServiceProvider
 
     private function registerBladeIntegration(): void
     {
-        Blade::directive('plausibleScript', static fn (string $expression): string => "<?php echo \RoundlyConsulting\Plausible\Support\ScriptTag::render({$expression}); ?>");
+        Blade::directive('plausibleScript', static fn (string $expression): string => "<?php echo app(\RoundlyConsulting\Plausible\PlausibleManager::class)->script({$expression}); ?>");
 
         Blade::component('plausible-script', PlausibleScript::class);
     }

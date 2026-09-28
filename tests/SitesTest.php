@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-use Illuminate\Http\Client\Response;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use RoundlyConsulting\Plausible\Requests\Sites\CreateSiteRequest;
+use RoundlyConsulting\Plausible\Results\SiteResult;
 
 it('creates site', function () {
     useHttpSnapshot('sites/create');
@@ -15,7 +16,9 @@ it('creates site', function () {
             domain: 'lorem.test',
         ));
 
-    expect($response)->toBeInstanceOf(Response::class);
+    expect($response)->toBeInstanceOf(SiteResult::class)
+        ->and($response->domain)->toBe('lorem.test')
+        ->and($response->timezone)->toBe('Etc/UTC');
 
     Http::assertSent(
         fn ($request) => $request->method() === 'POST'
@@ -31,10 +34,22 @@ it('deletes site', function () {
         ->sites()
         ->delete('lorem.test');
 
-    expect($response)->toBeInstanceOf(Response::class);
+    expect($response)->toBeTrue();
 
     Http::assertSent(
         fn ($request) => $request->method() === 'DELETE'
             && str_ends_with($request->url(), '/api/v1/sites/lorem.test')
     );
 });
+
+it('reports a site deletion plausible refused', function () {
+    Http::fake(['*' => Http::response(['deleted' => false], 200)]);
+
+    expect(plausible()->sites()->delete('lorem.test'))->toBeFalse();
+});
+
+it('throws when a site deletion fails', function () {
+    Http::fake(['*' => Http::response(['error' => 'Site could not be found'], 404)]);
+
+    plausible()->sites()->delete('missing.test');
+})->throws(RequestException::class);

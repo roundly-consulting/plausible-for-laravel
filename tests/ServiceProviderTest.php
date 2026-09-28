@@ -7,7 +7,7 @@ use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\ServiceProvider;
 use RoundlyConsulting\Plausible\Http\Middleware\TrackPageview;
-use RoundlyConsulting\Plausible\Plausible;
+use RoundlyConsulting\Plausible\PlausibleManager;
 use RoundlyConsulting\Plausible\PlausibleServiceProvider;
 
 it('merges the package config', function (): void {
@@ -16,7 +16,7 @@ it('merges the package config', function (): void {
 });
 
 it('binds the client as a singleton', function (): void {
-    expect(app(Plausible::class))->toBe(app(Plausible::class));
+    expect(app(PlausibleManager::class))->toBe(app(PlausibleManager::class));
 });
 
 it('registers the package commands', function (): void {

@@ -15,6 +15,8 @@ use RoundlyConsulting\Plausible\Requests\Events\CaptureEventRequest;
  * Recording {@see EventsRepository} used by {@see PlausibleFake}. It records the
  * captured request for later assertions, then performs the (faked) HTTP call so
  * callers still receive a {@see Response}.
+ *
+ * @internal
  */
 final class FakeEventsRepository extends EventsRepository
 {

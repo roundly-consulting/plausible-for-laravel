@@ -9,8 +9,10 @@ use Illuminate\Support\HtmlString;
 /**
  * Builds the official hosted Plausible tracking-script tag from config. No JS is
  * bundled — this just emits the standard `<script>` snippet pointing at the
- * configured host. Used by the `@plausibleScript` directive and the
- * `<x-plausible-script>` component.
+ * configured host. Host code calls `Plausible::script()`, which the
+ * `@plausibleScript` directive and the `<x-plausible-script>` component render too.
+ *
+ * @internal
  */
 final class ScriptTag
 {
