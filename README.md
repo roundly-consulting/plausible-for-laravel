@@ -27,7 +27,9 @@ strongly-typed request API — no manual HTTP plumbing required.
 
 - PHP `^8.4` with `ext-bcmath`
 - Laravel `^12.0` or `^13.0`
-- A Plausible account (Cloud or self-hosted) and an API key
+- A Plausible account (Cloud or self-hosted). Reading stats needs a **Stats API** key and
+  provisioning (sites, goals, shared links) a **Sites API** key; capturing events needs no key.
+  See [API keys](#api-keys).
 
 ## Integrates with
 
@@ -65,7 +67,8 @@ Optionally publish the config file:
 php artisan vendor:publish --tag="plausible-config"
 ```
 
-To customise the tracking-script Blade view, publish the views:
+To customise the tracking-script markup, publish the view. `Plausible::script()`,
+`@plausibleScript` and `<x-plausible-script>` all render it (see [Tracking script](#tracking-script)):
 
 ```bash
 php artisan vendor:publish --tag="plausible-views"
@@ -97,7 +100,7 @@ return [
     ],
 
     'tracking' => [
-        'queue' => (bool) env('PLAUSIBLE_TRACKING_QUEUE', true),
+        'queue' => env('PLAUSIBLE_TRACKING_QUEUE', true),
         'user_agent' => env('PLAUSIBLE_TRACKING_USER_AGENT', 'PlausibleForLaravel'),
         'ip_address' => env('PLAUSIBLE_TRACKING_IP', '127.0.0.1'),
     ],
@@ -112,20 +115,21 @@ return [
 | Key                     | Type      | Default                            | Env                          | Description |
 |-------------------------|-----------|------------------------------------|------------------------------|-------------|
 | `url`                   | `string`  | —                                  | `PLAUSIBLE_URL`              | Base URL of your Plausible instance, e.g. `https://plausible.io` (or your self-hosted domain). Required. |
-| `key`                   | `string`  | —                                  | `PLAUSIBLE_API_KEY`          | Your Plausible API key, used as a Bearer token on Stats and Sites requests. Required. |
-| `site`                  | `?string` | `null`                             | `PLAUSIBLE_SITE`             | Optional default site (domain). When set, fluent calls and the events helpers can omit the site. |
+| `key`                   | `string`  | —                                  | `PLAUSIBLE_API_KEY`          | Your Plausible API key, sent as a Bearer token on Stats and Sites requests. Required for those; event capture neither needs nor sends it. See [API keys](#api-keys). |
+| `site`                  | `?string` | `null`                             | `PLAUSIBLE_SITE`             | Optional default site (domain). Used by `stats()->query()`, the events helpers, the middleware, the `Trackable` trait, the script tag (when `script.domain` is unset) and the health check. |
 | `timeout`               | `int`     | `10`                               | `PLAUSIBLE_TIMEOUT`          | Per-request timeout in seconds. |
 | `retry.times`           | `int`     | `0`                                | `PLAUSIBLE_RETRY_TIMES`      | Number of automatic retries on transient failures. `0` disables retries. |
 | `retry.sleep_ms`        | `int`     | `100`                              | `PLAUSIBLE_RETRY_SLEEP`      | Milliseconds to wait between retries. |
 | `rate_limits.*`         | `array`   | see [Rate limiting](#rate-limiting)| `PLAUSIBLE_*_RATELIMIT*`     | Per-surface client-side rate limiting for `stats`, `events`, and `sites`. |
-| `tracking.queue`        | `bool`    | `true`                             | `PLAUSIBLE_TRACKING_QUEUE`   | Queue captures from the middleware / `Trackable` trait so they never block the response. |
+| `tracking.queue`        | `bool`    | `true`                             | `PLAUSIBLE_TRACKING_QUEUE`   | Queue captures from the middleware / `Trackable` trait so they never block the response. Accepts `true`/`false`, `on`/`off`, `yes`/`no`, `1`/`0`. |
 | `tracking.user_agent`   | `string`  | `PlausibleForLaravel`              | `PLAUSIBLE_TRACKING_USER_AGENT` | User-agent used for server-side captures when no HTTP request is in scope. |
 | `tracking.ip_address`   | `string`  | `127.0.0.1`                        | `PLAUSIBLE_TRACKING_IP`      | IP used for server-side captures when no HTTP request is in scope. |
 | `script.domain`         | `?string` | `null`                             | `PLAUSIBLE_SCRIPT_DOMAIN`    | `data-domain` for the tracking script. Falls back to `site` when null. |
 | `script.src`            | `string`  | `https://plausible.io/js/script.js`| `PLAUSIBLE_SCRIPT_SRC`       | URL of the hosted Plausible script (point at your self-hosted host or a script variant). |
 
-Missing `url` or `key` throws `RoundlyConsulting\Plausible\Exceptions\MissingConfiguration`
-(a `PlausibleException`) on the first call, rather than sending a broken request.
+A missing `url` throws `RoundlyConsulting\Plausible\Exceptions\MissingConfiguration` (a
+`PlausibleException`) on the first call, and a missing `key` on the first Stats or Sites call,
+rather than sending a broken request. Event capture works without a key.
 
 Set the essentials in your `.env`:
 
@@ -134,6 +138,21 @@ PLAUSIBLE_URL=https://plausible.io
 PLAUSIBLE_API_KEY=your-api-key
 PLAUSIBLE_SITE=my-site.com
 ```
+
+### API keys
+
+Plausible issues two kinds of API key (Settings → API keys → **New API key**):
+
+- a **Stats API** key — reads stats (`stats()`); Plausible limits it to 600 requests/hour by
+  default, across every site the key's team owns;
+- a **Sites API** key — provisions sites, goals and shared links (`sites()`, `goals()`,
+  `sharedLinks()`); the Sites API is an Enterprise plan feature.
+
+The package sends the one configured `PLAUSIBLE_API_KEY` as a Bearer token to the Stats and Sites
+APIs, so use the key type for the APIs you call. The Events API (`events()`, the middleware, the
+`Trackable` trait) is unauthenticated: it needs only `PLAUSIBLE_URL`, and the key is never sent
+there. `php artisan plausible:health` tells you whether the key works — see
+[Health check](#health-check).
 
 ### Where it shines
 
@@ -150,6 +169,7 @@ Use the `Plausible` facade. It exposes one resource client per API area — `sta
 use RoundlyConsulting\Plausible\Facades\Plausible;
 
 Plausible::stats()->for('my-site.com')->last7Days()->aggregate();
+Plausible::stats()->query()->last7Days()->aggregate();   // query() = the PLAUSIBLE_SITE default
 Plausible::events()->fromRequest(request())->event('Signup', url: url('/register'));
 Plausible::script();   // the <script> tag, for any view
 ```
@@ -185,6 +205,10 @@ The fluent builder is the recommended way to read stats. It returns typed result
 you stop hand-parsing JSON, and accepts enums for type-safe metrics, periods, intervals and
 properties (plain strings still work everywhere).
 
+Start it with `Plausible::stats()->for('my-site.com')`, or with `Plausible::stats()->query()` to
+use the configured default site (`PLAUSIBLE_SITE`). Without either there is no builder:
+`Plausible::stats()` itself is the [explicit-request client](#stats-api--explicit-requests).
+
 ```php
 use RoundlyConsulting\Plausible\Facades\Plausible;
 use RoundlyConsulting\Plausible\Enums\Metric;
@@ -196,7 +220,7 @@ $live = Plausible::stats()->for('my-site.com')->realtime(); // int
 
 // Aggregate metrics for a custom range, compared with the previous period
 $result = Plausible::stats()
-    ->for('my-site.com')                          // omit when PLAUSIBLE_SITE is set
+    ->for('my-site.com')                          // or ->query() for PLAUSIBLE_SITE
     ->metrics(Metric::Visitors, Metric::Pageviews, Metric::BounceRate)
     ->between(now()->subDays(7), now())           // auto-sets period=custom
     ->compare()
@@ -223,8 +247,14 @@ $rows = Plausible::stats()
     ->rows();                                      // list<BreakdownRow>
 ```
 
-`since(Carbon $start)` and `between(Carbon $start, Carbon $end)` both set `period=custom` for
-you, so a date range can never be silently ignored.
+`between(Carbon $start, Carbon $end)` and `since(Carbon $start)` both set `period=custom` with a
+closed range for you: v1 terminals send `date=start,end`, and `run()` sends
+`date_range: [start, end]`. `since()` runs through today (in the app's timezone, fixed when you
+call it):
+
+```php
+Plausible::stats()->query()->since(now()->startOfYear())->aggregate();   // year to date
+```
 
 #### Named period shortcuts
 
@@ -318,7 +348,9 @@ $result = Plausible::stats()->aggregateResult(AggregateRequest::make(
 )); // -> AggregateResult
 ```
 
-`timeseriesResult()` and `breakdownResult()` exist too.
+`timeseriesResult()` and `breakdownResult()` exist too. For a v1 request with `period: 'custom'`
+and only a `start`, the range is closed at today (`date=start,today`); with any other period a
+lone `start` is the anchor date (`period: 'month', start: 2024-01-01` is January 2024).
 
 ### Stats v2 query endpoint
 
@@ -358,7 +390,8 @@ webhooks, queued jobs).
 
 > Plausible needs the visitor's user-agent and IP to count unique visitors. Provide them with
 > `setVisitor()` or `fromRequest()`; capturing without them throws
-> `RoundlyConsulting\Plausible\Exceptions\UniqueVisitorIdentifierRequired`.
+> `RoundlyConsulting\Plausible\Exceptions\UniqueVisitorIdentifierRequired`. No API key is
+> needed: the Events API is unauthenticated, and the package never sends your key there.
 
 ```php
 use RoundlyConsulting\Plausible\Facades\Plausible;
@@ -496,8 +529,8 @@ only fire when a default `site` is configured.
 
 ### Sites API
 
-> The Sites API requires a key with the appropriate scope on your Plausible plan. Listing and
-> some management endpoints may require an enterprise plan on self-hosted instances.
+> The Sites API is an Enterprise plan feature and needs a **Sites API** key — a Stats API key is
+> refused there. See [API keys](#api-keys).
 
 ```php
 use RoundlyConsulting\Plausible\Facades\Plausible;
@@ -521,12 +554,13 @@ $deleted = Plausible::sites()->delete('my.domain.tld');   // -> bool
 ```
 
 `create`, `get`, `list` and `update` return typed `SiteResult` objects; `delete` returns `true`
-unless Plausible answers `deleted: false`. A failed request throws.
+unless Plausible answers `deleted: false`. A failed request throws. `list()` follows Plausible's
+cursor pagination (`meta.after`, 100 per page) and returns every site. The site is URL-encoded
+into the path, so a value containing `/` or `?` can't reach another endpoint.
 
 ### Goals API
 
-> The Goals provisioning API is gated to enterprise plans on Plausible Cloud (and requires the
-> corresponding feature on self-hosted instances).
+> Goals are part of the Sites API: an Enterprise plan feature that needs a **Sites API** key.
 
 ```php
 use RoundlyConsulting\Plausible\Requests\Sites\CreateGoalRequest;
@@ -534,22 +568,22 @@ use RoundlyConsulting\Plausible\Requests\Sites\CreateGoalRequest;
 $goal = Plausible::goals()->create(CreateGoalRequest::event('my-site.com', 'Signup'));  // -> GoalResult
 Plausible::goals()->create(CreateGoalRequest::page('my-site.com', '/checkout'));
 
-$goals = Plausible::goals()->list('my-site.com');         // -> list<GoalResult>
+$goals = Plausible::goals()->list('my-site.com');         // -> list<GoalResult>, every page
 Plausible::goals()->delete('my-site.com', $goal->id);     // -> bool
 ```
 
 ### Shared links API
 
-> Shared links are gated to enterprise plans on Plausible Cloud (and require the corresponding
-> feature on self-hosted instances).
+> Shared links are part of the Sites API: an Enterprise plan feature that needs a **Sites API**
+> key.
 
 ```php
 $link = Plausible::sharedLinks()->create('my-site.com', 'Public dashboard');  // -> SharedLinkResult
 $link->url; // shareable dashboard URL
-
-// Optionally password-protect it:
-Plausible::sharedLinks()->create('my-site.com', 'Investors', 'secret');
 ```
+
+`create()` is find-or-create: Plausible returns the existing link when one with that name exists.
+Plausible's endpoint takes only a site and a name — it has no password option.
 
 ### Tracking script
 
@@ -577,23 +611,43 @@ Plausible::script('my-site.com');   // explicit domain
 ```
 
 The directive and the component render `Plausible::script()`, so rebinding the manager changes
-all three.
+all three. `Plausible::script()` in turn renders the `plausible::components.script` view with
+`$domain` and `$src`. Publish it (`php artisan vendor:publish --tag="plausible-views"`) and edit
+`resources/views/vendor/plausible/components/script.blade.php` to change the markup everywhere —
+add `data-api` for a proxy, say. With no domain nothing is rendered.
 
 ### Health check
 
 Verify configuration and connectivity without throwing:
 
 ```php
-Plausible::ping();    // bool — is the API reachable with the configured key?
-$health = Plausible::health();
-$health->ok();        // configured AND reachable
-$health->message;     // human-readable status
+Plausible::ping();                  // bool — reachable AND the key is accepted
+Plausible::ping('my-site.com');     // same, verified against this site
+$health = Plausible::health();      // -> HealthResult
+$health->ok();                      // configured, reachable and the key accepted
+$health->reachable;                 // the instance answered (no connection error, 5xx or 404)
+$health->authorized;                // the probe was answered 2xx with the key
+$health->status;                    // HTTP status of the probe, or null
+$health->message;                   // human-readable status
 ```
 
-A matching Artisan command reports the same:
+The probe depends on what it can verify:
+
+- **With a site** — the argument, else `PLAUSIBLE_SITE` — it calls the Stats API
+  (`GET /api/v1/stats/realtime/visitors`), which a Stats API key can reach.
+- **Without one** it calls the Sites API (`GET /api/v1/sites`), which only a Sites API key can
+  reach; a refused Stats key is reported as such, with the fix (set `PLAUSIBLE_SITE` or pass a
+  site).
+
+Only a `2xx` passes. A server error (`5xx`) or a `404` (a wrong `PLAUSIBLE_URL`) marks the
+instance unreachable; a `401`/`402`/`403` means the key was refused, and a `429` means the key is
+rate-limited and could not be verified.
+
+A matching Artisan command reports the same and exits non-zero unless `ok()`:
 
 ```bash
 php artisan plausible:health
+php artisan plausible:health --site=my-site.com
 ```
 
 ### Enums
@@ -612,12 +666,16 @@ validating a chosen parameter:
 use RoundlyConsulting\Plausible\Enums\Metric;
 use RoundlyConsulting\Plausible\Enums\Period;
 
-Metric::values();            // ['visitors', 'visits', 'pageviews', …] — the raw wire keys
+Metric::values();            // Collection ['visitors', 'visits', 'pageviews', …] — the raw wire keys
 Metric::validationRule();    // 'in:visitors,visits,pageviews,…' for request validation
-Period::toOptions();         // ['day' => 'Day', '7d' => 'Seven Days', …] for a <select>
-Period::options();           // list of {value, label, name} DTOs for JS/Inertia
+Period::toOptions();         // Collection ['day' => 'Day', '7d' => 'Seven Days', …] for a <select>
+Period::toArray();           // the same map as a plain array
+Period::options();           // Collection of EnumOption {value, label, name} DTOs for JS/Inertia
 Period::fromName('SixMonths'); // Period::SixMonths
 ```
+
+`values()`, `labels()`, `toOptions()` and `options()` return an `Illuminate\Support\Collection`
+— call `->all()` when you need a plain array.
 
 **Labels vs wire values.** `value`/`values()`/`validationRule()`/`custom()` always emit the raw
 API strings. Only the *display* label differs: `Metric`, `Interval`, `GoalType`, and
@@ -635,6 +693,11 @@ Three independent buckets — **`stats`** (query API), **`events`** (ingestion),
 (provisioning: sites, goals, shared links) — each keyed
 `plausible:{surface}:{owner}:{host}[:{site}]`.
 
+Plausible's limit (600 requests/hour by default) applies **per API key**, across every site the
+key can read. So `stats` and `sites` default to one account-wide bucket (`per_site` off): a
+dashboard over 20 sites still spends one 600/hour budget, as Plausible counts it. `events` is
+unauthenticated and keeps a bucket per site.
+
 Configure each bucket under `plausible.rate_limits.{surface}`:
 
 | Key        | Type      | Stats default | Events default | Sites default | Description |
@@ -646,13 +709,14 @@ Configure each bucket under `plausible.rate_limits.{surface}`:
 | `adaptive` | `bool`    | `true`        | `true`         | `true`        | Honour Plausible's `429 Retry-After` for server-authoritative backoff. |
 | `max_wait` | `?int`    | `null`        | `null`         | `null`        | Milliseconds. `null` = pace (wait); set it to fail fast with `RateLimitExceeded`. |
 | `jitter`   | `?int`    | `null`        | `null`         | `null`        | Milliseconds of random spread added to defers. |
-| `per_site` | `bool`    | `true`        | `true`         | `true`        | Include the site in the key; set `false` for account-wide API keys. |
+| `per_site` | `bool`    | `false`       | `true`         | `false`       | Include the site in the key (a separate budget per site). Keep it off for `stats`/`sites` unless your key really has per-site quotas. |
 
 Each key is backed by an env var, e.g. `PLAUSIBLE_STATS_RATELIMIT=600`,
-`PLAUSIBLE_EVENTS_RATELIMIT_PER=minute`, `PLAUSIBLE_SITES_RATELIMIT_ENABLED=false`. Stats defaults
-to Plausible Cloud's documented ~600 requests/hour limit; Events is a generous per-minute budget
-for high-volume ingestion; Sites is a low provisioning budget. Self-hosted instances may set
-different numbers.
+`PLAUSIBLE_EVENTS_RATELIMIT_PER=minute`, `PLAUSIBLE_SITES_RATELIMIT_ENABLED=false`,
+`PLAUSIBLE_STATS_RATELIMIT_PER_SITE=on`. The boolean keys accept `true`/`false`, `on`/`off`,
+`yes`/`no` and `1`/`0`. Stats defaults to Plausible's documented 600 requests/hour per key; Events
+is a generous per-minute budget for high-volume ingestion; Sites is a low provisioning budget
+drawn from the same key. Self-hosted instances may set different numbers.
 
 **Wait vs fail fast.** By default a request that would exceed its window *waits* until the window
 frees up. Set `max_wait` (ms) to instead throw
@@ -694,8 +758,10 @@ for an account-wide 600/hr quota), point the limiter's store at Cache/Redis/Data
 In your application's tests, swap the client into a recording fake with `Plausible::fake()` —
 no real HTTP. It replaces the facade root **and** the container binding, so an injected
 `PlausibleManager`, `plausible()`, the `Trackable` trait and the `plausible.track` middleware are
-all recorded. Site create/delete and goal delete answer with canned typed results. Then assert on
-what was captured, queried or provisioned:
+all recorded. Site create/delete and goal delete answer with canned typed results. Queued captures
+are recorded instead of dispatched, but still need a visitor (`setVisitor()` / `fromRequest()`) —
+the fake refuses exactly what the real client refuses. Then assert on what was captured, queried
+or provisioned:
 
 ```php
 use RoundlyConsulting\Money\Money;

@@ -49,3 +49,26 @@ Initial public release.
 - `Support\ScriptTag` is internal — use `Plausible::script()`.
 - Outbound rate limits are built through the `RateLimits` facade of
   http-client-rate-limits-for-laravel.
+- The `stats` and `sites` rate-limit buckets default to one budget per API key (`per_site` off),
+  matching Plausible's per-key limit; `events` stays per site.
+- `Plausible::ping()` / `health()` take an optional site; `HealthResult` gains `authorized`.
+
+### Removed
+
+- The shared-link `password` argument — Plausible's shared-links endpoint takes only a site and a
+  name, so the link was created unprotected.
+
+### Fixed
+
+- `since()` sends a closed range: v1 `period=custom&date=start,today`, v2
+  `date_range: [start, today]`. A v1 custom period with only a start is closed at today.
+- Event capture neither requires nor sends the API key — the Events API is unauthenticated.
+- The health check fails on `5xx` and `404`, probes the Stats API for the default site (or
+  `plausible:health --site=`), and explains the key scope when the Sites API refuses a Stats key.
+- `sites()->list()` and `goals()->list()` follow the `meta.after` cursor through every page.
+- Site and goal ids are URL-encoded into request paths.
+- `Plausible::fake()` refuses a queued capture without a visitor, like the real client.
+- `Plausible::script()`, `@plausibleScript` and `<x-plausible-script>` render the publishable
+  `plausible::components.script` view.
+- Boolean env config (`*_ENABLED`, `*_ADAPTIVE`, `*_PER_SITE`, `PLAUSIBLE_TRACKING_QUEUE`) accepts
+  `on`/`off`, `yes`/`no`, `1`/`0` as well as `true`/`false`.
