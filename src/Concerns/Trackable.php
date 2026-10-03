@@ -78,9 +78,7 @@ trait Trackable
 
     protected function plausibleEventSite(): ?string
     {
-        $site = config('plausible.site');
-
-        return is_string($site) && $site !== '' ? $site : null;
+        return PlausibleConfig::present(config('plausible.site'));
     }
 
     public function dispatchPlausibleEvent(string $name): void

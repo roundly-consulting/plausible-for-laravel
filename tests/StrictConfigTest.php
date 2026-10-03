@@ -14,7 +14,8 @@ use RoundlyConsulting\Plausible\Support\ScriptTag;
 /*
  | Owner rule: a typo in a host's config or env fails loudly and never falls back silently. A
  | `per` typo used to become an hourly window, `(int)` turned a junk timeout into 0 (no
- | timeout) and a junk limit into 0, and a non-numeric max_wait/jitter was ignored.
+ | timeout) and a junk limit into 0, and a non-numeric max_wait/jitter was ignored. A blank
+ | value (`''` or whitespace — a host's `KEY=`) is not junk: it is not set, so the default applies.
  */
 
 /**
@@ -123,13 +124,33 @@ it('refuses a junk rate-limit leaf instead of casting or ignoring it (strict con
 })->with([
     'limit word' => ['limit', 'lots'],
     'limit zero' => ['limit', 0],
-    'limit empty' => ['limit', ''],
     'max_wait word' => ['max_wait', 'never'],
     'max_wait negative' => ['max_wait', '-1'],
     'jitter decimal' => ['jitter', '0.5'],
-    'owner blank' => ['owner', ' '],
     'owner array' => ['owner', ['app']],
 ]);
+
+it('reads blank rate-limit leaves as not set, so each default applies (strict config)', function (string $blank): void {
+    $settings = PlausibleConfig::rateLimit('plausible.rate_limits.stats', [
+        'per' => $blank,
+        'limit' => $blank,
+        'owner' => $blank,
+        'max_wait' => $blank,
+        'jitter' => $blank,
+    ], Timespan::Hour, 600);
+
+    expect($settings)->toBe(['per' => Timespan::Hour, 'limit' => 600, 'owner' => 'app', 'max_wait' => null, 'jitter' => null]);
+})->with(['empty' => '', 'whitespace' => '  ']);
+
+it('reads blank timeout and retry settings as their defaults (strict config)', function (): void {
+    config()->set('plausible.timeout', '');
+    config()->set('plausible.retry.times', ' ');
+    config()->set('plausible.retry.sleep_ms', '');
+
+    expect(PlausibleConfig::timeout())->toBe(10)
+        ->and(PlausibleConfig::retryTimes())->toBe(0)
+        ->and(PlausibleConfig::retrySleep())->toBe(100);
+});
 
 it('keeps each surface default window and limit when the leaves are absent (strict config)', function (string $section, Timespan $per, int $limit): void {
     $settings = PlausibleConfig::rateLimit($section, [], $per, $limit);
@@ -165,7 +186,7 @@ it('reads canonical integer-string rate-limit leaves (strict config)', function 
     expect($settings)->toBe(['per' => Timespan::Day, 'limit' => 300, 'owner' => 'fleet', 'max_wait' => 0, 'jitter' => 250]);
 });
 
-it('refuses a blank or wrong-typed tracking identity (strict config)', function (string $key, mixed $value): void {
+it('refuses a wrong-typed tracking identity (strict config)', function (string $key, mixed $value): void {
     config()->set($key, $value);
 
     $read = $key === 'plausible.tracking.user_agent'
@@ -174,9 +195,19 @@ it('refuses a blank or wrong-typed tracking identity (strict config)', function 
 
     expect($read)->toThrow(InvalidConfigurationException::class, "[{$key}]");
 })->with([
-    'user agent blank' => ['plausible.tracking.user_agent', ''],
+    'user agent int' => ['plausible.tracking.user_agent', 5],
     'ip array' => ['plausible.tracking.ip_address', ['127.0.0.1']],
 ]);
+
+it('reads a blank tracking identity or script url as its default (strict config)', function (string $blank): void {
+    config()->set('plausible.tracking.user_agent', $blank);
+    config()->set('plausible.tracking.ip_address', $blank);
+    config()->set('plausible.script.src', $blank);
+
+    expect(PlausibleConfig::trackingUserAgent())->toBe('PlausibleForLaravel')
+        ->and(PlausibleConfig::trackingIpAddress())->toBe('127.0.0.1')
+        ->and(PlausibleConfig::scriptSrc())->toBe('https://plausible.io/js/script.js');
+})->with(['empty' => '', 'whitespace' => '  ']);
 
 it('refuses a wrong-typed script domain instead of deferring to the site (strict config)', function (): void {
     config()->set('plausible.script.domain', ['example.com']);
@@ -185,9 +216,21 @@ it('refuses a wrong-typed script domain instead of deferring to the site (strict
     expect(fn () => ScriptTag::render())->toThrow(InvalidConfigurationException::class, '[plausible.script.domain]');
 });
 
-it('defers an empty script domain to the site (strict config)', function (): void {
-    config()->set('plausible.script.domain', '');
+it('defers a blank script domain to the site (strict config)', function (string $blank): void {
+    config()->set('plausible.script.domain', $blank);
     config()->set('plausible.site', 'site.test');
 
     expect((string) ScriptTag::render())->toContain('data-domain="site.test"');
+})->with(['empty' => '', 'whitespace' => '  ']);
+
+it('reads a blank url, key or site as not configured (strict config)', function (): void {
+    config()->set('plausible.url', '  ');
+    config()->set('plausible.key', '  ');
+    config()->set('plausible.site', '  ');
+
+    $health = plausible()->health();
+
+    expect($health->hasUrl)->toBeFalse()
+        ->and($health->hasKey)->toBeFalse()
+        ->and((string) ScriptTag::render())->toBe('');
 });

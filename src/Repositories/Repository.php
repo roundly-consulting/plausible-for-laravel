@@ -24,9 +24,9 @@ abstract class Repository
     protected function request(bool $throw = true): PendingRequest
     {
         $client = $this->client($throw);
-        $key = config('plausible.key');
+        $key = PlausibleConfig::present(config('plausible.key'));
 
-        if (! is_string($key) || $key === '') {
+        if ($key === null) {
             throw MissingConfiguration::key();
         }
 
@@ -39,9 +39,9 @@ abstract class Repository
      */
     protected function client(bool $throw = true): PendingRequest
     {
-        $url = config('plausible.url');
+        $url = PlausibleConfig::present(config('plausible.url'));
 
-        if (! is_string($url) || $url === '') {
+        if ($url === null) {
             throw MissingConfiguration::url();
         }
 
@@ -114,9 +114,7 @@ abstract class Repository
      */
     public function defaultSite(): ?string
     {
-        $site = config('plausible.site');
-
-        return is_string($site) && $site !== '' ? $site : null;
+        return PlausibleConfig::present(config('plausible.site'));
     }
 
     protected function timeout(): int

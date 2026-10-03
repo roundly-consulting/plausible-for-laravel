@@ -18,6 +18,7 @@ use RoundlyConsulting\Plausible\Requests\Sites\CreateGoalRequest;
 use RoundlyConsulting\Plausible\Requests\Sites\CreateSharedLinkRequest;
 use RoundlyConsulting\Plausible\Requests\Sites\CreateSiteRequest;
 use RoundlyConsulting\Plausible\Requests\Sites\UpdateSiteRequest;
+use RoundlyConsulting\Plausible\Support\PlausibleConfig;
 
 /**
  * A recording, still-offline variant of {@see PlausibleManager} for host-app tests,
@@ -60,11 +61,11 @@ final class PlausibleFake extends PlausibleManager
     {
         parent::__construct($container);
 
-        if (! is_string(config('plausible.url')) || config('plausible.url') === '') {
+        if (PlausibleConfig::present(config('plausible.url')) === null) {
             config()->set('plausible.url', 'https://plausible.test');
         }
 
-        if (! is_string(config('plausible.key')) || config('plausible.key') === '') {
+        if (PlausibleConfig::present(config('plausible.key')) === null) {
             config()->set('plausible.key', 'fake-key');
         }
 

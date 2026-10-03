@@ -40,18 +40,18 @@ it('uses the configured script src', function () {
     expect((string) ScriptTag::render())->toContain('src="https://analytics.example.com/js/script.js"');
 });
 
-it('refuses an empty configured src instead of using the default (strict config)', function () {
-    config()->set('plausible.script.src', '');
+it('refuses a wrong-typed configured src instead of using the default (strict config)', function () {
+    config()->set('plausible.script.src', ['https://plausible.io/js/script.js']);
 
     expect(fn () => ScriptTag::render())
         ->toThrow(InvalidConfigurationException::class, '[plausible.script.src]');
 });
 
-it('uses the default src only when none is configured (strict config)', function () {
-    config()->set('plausible.script.src', null);
+it('uses the default src when none is set (strict config)', function (?string $unset) {
+    config()->set('plausible.script.src', $unset);
 
     expect((string) ScriptTag::render())->toContain('src="https://plausible.io/js/script.js"');
-});
+})->with(['absent' => null, 'empty' => '', 'whitespace' => '  ']);
 
 it('renders via the blade directive', function () {
     expect(Blade::render('@plausibleScript'))->toContain('data-domain="scripted.test"');

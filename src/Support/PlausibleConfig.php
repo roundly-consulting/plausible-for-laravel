@@ -9,10 +9,11 @@ use RoundlyConsulting\PackageToolkit\Exceptions\InvalidConfigurationException;
 use RoundlyConsulting\PackageToolkit\Support\Config;
 
 /**
- * Strict reads of the non-boolean `plausible.*` settings. An absent (null) key takes its
- * default; a present value of the wrong shape — `'five'` for the timeout, an `hourly` window,
- * a blank script URL — throws {@see InvalidConfigurationException} naming the key. Nothing is
- * cast to 0 (a junk timeout used to mean "wait forever") or swapped for the default.
+ * Strict reads of the non-boolean `plausible.*` settings. A key that is not set — absent, null
+ * or blank (`''` or whitespace, a host's `KEY=`) — takes its default; a present value of the
+ * wrong shape — `'five'` for the timeout, an `hourly` window, an array for the script URL —
+ * throws {@see InvalidConfigurationException} naming the key. Junk is never cast to 0 (a junk
+ * timeout used to mean "wait forever") or swapped for the default.
  *
  * @internal
  */
@@ -51,12 +52,10 @@ final class PlausibleConfig
         return self::string('plausible.script.src', 'https://plausible.io/js/script.js');
     }
 
-    /** The `data-domain` override; null (or an empty env line) defers to `plausible.site`. */
+    /** The `data-domain` override; not set (null or a blank env line) defers to `plausible.site`. */
     public static function scriptDomain(): ?string
     {
-        $domain = config('plausible.script.domain');
-
-        if ($domain === null || $domain === '') {
+        if (self::blank(config('plausible.script.domain'))) {
             return null;
         }
 
@@ -82,14 +81,26 @@ final class PlausibleConfig
         return [
             'per' => $values->enum("{$section}.per", Timespan::class, $per),
             'limit' => $values->integer("{$section}.limit", $limit, min: 1),
-            'owner' => ($config['owner'] ?? null) === null ? 'app' : $values->requireString("{$section}.owner"),
-            'max_wait' => ($config['max_wait'] ?? null) === null ? null : $values->integer("{$section}.max_wait", 0, min: 0),
-            'jitter' => ($config['jitter'] ?? null) === null ? null : $values->integer("{$section}.jitter", 0, min: 0),
+            'owner' => self::blank($config['owner'] ?? null) ? 'app' : $values->requireString("{$section}.owner"),
+            'max_wait' => self::blank($config['max_wait'] ?? null) ? null : $values->integer("{$section}.max_wait", 0, min: 0),
+            'jitter' => self::blank($config['jitter'] ?? null) ? null : $values->integer("{$section}.jitter", 0, min: 0),
         ];
+    }
+
+    /** The value when it is a non-blank string; null when not set (absent, null or blank). */
+    public static function present(mixed $value): ?string
+    {
+        return is_string($value) && ! self::blank($value) ? $value : null;
+    }
+
+    /** Not set: absent, null or a blank string (`''` or whitespace — a host's `KEY=`). */
+    public static function blank(mixed $value): bool
+    {
+        return $value === null || (is_string($value) && trim($value) === '');
     }
 
     private static function string(string $key, string $default): string
     {
-        return config($key) === null ? $default : Config::requireString($key);
+        return self::blank(config($key)) ? $default : Config::requireString($key);
     }
 }

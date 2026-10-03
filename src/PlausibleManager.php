@@ -91,8 +91,8 @@ class PlausibleManager
     {
         $url = config('plausible.url');
         $key = config('plausible.key');
-        $hasUrl = is_string($url) && $url !== '';
-        $hasKey = is_string($key) && $key !== '';
+        $hasUrl = PlausibleConfig::present($url) !== null;
+        $hasKey = PlausibleConfig::present($key) !== null;
 
         if (! $hasUrl || ! $hasKey) {
             return new HealthResult(
@@ -138,8 +138,6 @@ class PlausibleManager
 
     private function defaultSite(): ?string
     {
-        $site = config('plausible.site');
-
-        return is_string($site) && $site !== '' ? $site : null;
+        return PlausibleConfig::present(config('plausible.site'));
     }
 }

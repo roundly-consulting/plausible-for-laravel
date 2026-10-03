@@ -8,6 +8,7 @@ use Closure;
 use Illuminate\Http\Request;
 use RoundlyConsulting\PackageToolkit\Support\Config;
 use RoundlyConsulting\Plausible\Requests\Events\CaptureEventRequest;
+use RoundlyConsulting\Plausible\Support\PlausibleConfig;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -84,8 +85,6 @@ final class TrackPageview
             return $override;
         }
 
-        $site = config('plausible.site');
-
-        return is_string($site) && $site !== '' ? $site : null;
+        return PlausibleConfig::present(config('plausible.site'));
     }
 }

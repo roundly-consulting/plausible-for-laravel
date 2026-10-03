@@ -11,6 +11,7 @@ use RoundlyConsulting\PackageToolkit\PackageServiceProvider;
 use RoundlyConsulting\PackageToolkit\Support\Config;
 use RoundlyConsulting\Plausible\Commands\HealthCommand;
 use RoundlyConsulting\Plausible\Http\Middleware\TrackPageview;
+use RoundlyConsulting\Plausible\Support\PlausibleConfig;
 use RoundlyConsulting\Plausible\View\Components\PlausibleScript;
 
 final class PlausibleServiceProvider extends PackageServiceProvider
@@ -30,9 +31,9 @@ final class PlausibleServiceProvider extends PackageServiceProvider
                 $key = config('plausible.key');
 
                 return [
-                    'Instance' => is_string($url) && $url !== '' ? $url : 'NOT SET',
-                    'API key' => is_string($key) && $key !== '' ? 'SET' : 'MISSING',
-                    'Default site' => is_string($site) && $site !== '' ? $site : 'NONE',
+                    'Instance' => PlausibleConfig::present($url) ?? 'NOT SET',
+                    'API key' => PlausibleConfig::present($key) !== null ? 'SET' : 'MISSING',
+                    'Default site' => PlausibleConfig::present($site) ?? 'NONE',
                     'Rate limiting' => self::throttledSurfaces(),
                     'Queued tracking' => Config::boolean('plausible.tracking.queue', true) ? 'ON' : 'OFF',
                 ];

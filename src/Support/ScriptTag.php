@@ -42,8 +42,6 @@ final class ScriptTag
             return $domain;
         }
 
-        $site = config('plausible.site');
-
-        return is_string($site) && $site !== '' ? $site : null;
+        return PlausibleConfig::present(config('plausible.site'));
     }
 }
