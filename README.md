@@ -87,10 +87,10 @@ return [
     'url' => env('PLAUSIBLE_URL'),
     'key' => env('PLAUSIBLE_API_KEY'),
     'site' => env('PLAUSIBLE_SITE'),
-    'timeout' => (int) env('PLAUSIBLE_TIMEOUT', 10),
+    'timeout' => env('PLAUSIBLE_TIMEOUT', 10),
     'retry' => [
-        'times' => (int) env('PLAUSIBLE_RETRY_TIMES', 0),
-        'sleep_ms' => (int) env('PLAUSIBLE_RETRY_SLEEP', 100),
+        'times' => env('PLAUSIBLE_RETRY_TIMES', 0),
+        'sleep_ms' => env('PLAUSIBLE_RETRY_SLEEP', 100),
     ],
 
     'rate_limits' => [
@@ -117,19 +117,25 @@ return [
 | `url`                   | `string`  | —                                  | `PLAUSIBLE_URL`              | Base URL of your Plausible instance, e.g. `https://plausible.io` (or your self-hosted domain). Required. |
 | `key`                   | `string`  | —                                  | `PLAUSIBLE_API_KEY`          | Your Plausible API key, sent as a Bearer token on Stats and Sites requests. Required for those; event capture neither needs nor sends it. See [API keys](#api-keys). |
 | `site`                  | `?string` | `null`                             | `PLAUSIBLE_SITE`             | Optional default site (domain). Used by `stats()->query()`, the events helpers, the middleware, the `Trackable` trait, the script tag (when `script.domain` is unset) and the health check. |
-| `timeout`               | `int`     | `10`                               | `PLAUSIBLE_TIMEOUT`          | Per-request timeout in seconds. |
+| `timeout`               | `int`     | `10`                               | `PLAUSIBLE_TIMEOUT`          | Per-request timeout in seconds, at least `1`. |
 | `retry.times`           | `int`     | `0`                                | `PLAUSIBLE_RETRY_TIMES`      | Number of automatic retries on transient failures. `0` disables retries. |
 | `retry.sleep_ms`        | `int`     | `100`                              | `PLAUSIBLE_RETRY_SLEEP`      | Milliseconds to wait between retries. |
 | `rate_limits.*`         | `array`   | see [Rate limiting](#rate-limiting)| `PLAUSIBLE_*_RATELIMIT*`     | Per-surface client-side rate limiting for `stats`, `events`, and `sites`. |
 | `tracking.queue`        | `bool`    | `true`                             | `PLAUSIBLE_TRACKING_QUEUE`   | Queue captures from the middleware / `Trackable` trait so they never block the response. Accepts `true`/`false`, `on`/`off`, `yes`/`no`, `1`/`0`; anything else throws an `InvalidConfigurationException`. |
 | `tracking.user_agent`   | `string`  | `PlausibleForLaravel`              | `PLAUSIBLE_TRACKING_USER_AGENT` | User-agent used for server-side captures when no HTTP request is in scope. |
 | `tracking.ip_address`   | `string`  | `127.0.0.1`                        | `PLAUSIBLE_TRACKING_IP`      | IP used for server-side captures when no HTTP request is in scope. |
-| `script.domain`         | `?string` | `null`                             | `PLAUSIBLE_SCRIPT_DOMAIN`    | `data-domain` for the tracking script. Falls back to `site` when null. |
+| `script.domain`         | `?string` | `null`                             | `PLAUSIBLE_SCRIPT_DOMAIN`    | `data-domain` for the tracking script. Uses `site` when null or empty. |
 | `script.src`            | `string`  | `https://plausible.io/js/script.js`| `PLAUSIBLE_SCRIPT_SRC`       | URL of the hosted Plausible script (point at your self-hosted host or a script variant). |
 
 A missing `url` throws `RoundlyConsulting\Plausible\Exceptions\MissingConfiguration` (a
 `PlausibleException`) on the first call, and a missing `key` on the first Stats or Sites call,
 rather than sending a broken request. Event capture works without a key.
+
+Every other setting is read strictly. A key you leave unset takes the default above; a value of the
+wrong shape throws an `InvalidConfigurationException` naming the key, and is never cast or replaced
+by the default: integers take an `int` or a whole-number string (`PLAUSIBLE_TIMEOUT=15` works,
+`five`, `1.5` or an empty value throw), and the user agent, IP address and script URL must be
+non-empty strings.
 
 Set the essentials in your `.env`:
 
@@ -715,6 +721,10 @@ Each key is backed by an env var, e.g. `PLAUSIBLE_STATS_RATELIMIT=600`,
 `PLAUSIBLE_EVENTS_RATELIMIT_PER=minute`, `PLAUSIBLE_SITES_RATELIMIT_ENABLED=false`,
 `PLAUSIBLE_STATS_RATELIMIT_PER_SITE=on`. The boolean keys accept `true`/`false`, `on`/`off`,
 `yes`/`no` and `1`/`0`; anything else throws an `InvalidConfigurationException` naming the key.
+The rest are just as strict: `per` must be one of `second`, `minute`, `hour` or `day` (a typo such
+as `hourly` throws instead of becoming hourly), `limit` is a whole number of at least `1`,
+`max_wait` and `jitter` are whole numbers of at least `0` (or unset), and `owner` is a non-empty
+string.
 Stats defaults to Plausible's documented 600 requests/hour per key; Events
 is a generous per-minute budget for high-volume ingestion; Sites is a low provisioning budget
 drawn from the same key. Self-hosted instances may set different numbers.
