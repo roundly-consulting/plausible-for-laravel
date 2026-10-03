@@ -11,6 +11,7 @@ use RoundlyConsulting\HttpClientRateLimits\Exceptions\RateLimitExceededException
 use RoundlyConsulting\HttpClientRateLimits\Facades\RateLimits;
 use RoundlyConsulting\HttpClientRateLimits\Limit;
 use RoundlyConsulting\HttpClientRateLimits\RateLimit;
+use RoundlyConsulting\PackageToolkit\Support\Config;
 use RoundlyConsulting\Plausible\Exceptions\RateLimitExceeded;
 
 trait InteractsWithRateLimits
@@ -27,10 +28,12 @@ trait InteractsWithRateLimits
      */
     protected function rateLimiter(string $surface, ?string $site): ?RateLimit
     {
-        /** @var array<string, mixed> $config */
-        $config = config(self::rateLimitSectionKey($surface), []);
+        $section = self::rateLimitSectionKey($surface);
 
-        if (! self::flag($config['enabled'] ?? null, true)) {
+        /** @var array<string, mixed> $config */
+        $config = config($section, []);
+
+        if (! self::flag($config['enabled'] ?? null, $section.'.enabled', true)) {
             return null;
         }
 
@@ -40,9 +43,9 @@ trait InteractsWithRateLimits
         $rateLimit = RateLimits::make(new Limit(
             maxAttempts: (int) ($config['limit'] ?? 600),
             timespan: $timespan,
-        ))->by($this->rateLimitKey($surface, $owner, $site, self::flag($config['per_site'] ?? null, $surface === 'events')));
+        ))->by($this->rateLimitKey($surface, $owner, $site, self::flag($config['per_site'] ?? null, $section.'.per_site', $surface === 'events')));
 
-        if (self::flag($config['adaptive'] ?? null, true)) {
+        if (self::flag($config['adaptive'] ?? null, $section.'.adaptive', true)) {
             $rateLimit->adaptive();
         }
 
@@ -58,19 +61,16 @@ trait InteractsWithRateLimits
     }
 
     /**
-     * A boolean flag from a rate-limit block. Env values arrive as strings, so `off`/`no`/`0`
-     * must read false and `on`/`yes`/`1` true — a `(bool)` cast reads every non-empty string
-     * as true. A missing or unparseable value falls back to `$default`.
+     * A boolean flag from a rate-limit block, read by the toolkit's strict reader. Env values
+     * arrive as strings, so `off`/`no`/`0` must read false and `on`/`yes`/`1` true — a `(bool)`
+     * cast reads every non-empty string as true. A missing value takes `$default`; anything
+     * unparseable throws an InvalidConfigurationException naming `$key`, the full config key.
      *
      * @internal
      */
-    public static function flag(mixed $value, bool $default): bool
+    public static function flag(mixed $value, string $key, bool $default): bool
     {
-        if ($value === null) {
-            return $default;
-        }
-
-        return filter_var($value, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE) ?? $default;
+        return Config::for([$key => $value])->boolean($key, $default);
     }
 
     /**

@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
 use RoundlyConsulting\HttpClientRateLimits\Facades\RateLimits;
+use RoundlyConsulting\PackageToolkit\Exceptions\InvalidConfigurationException;
 use RoundlyConsulting\Plausible\Requests\Stats\AggregateRequest;
 
 /*
@@ -114,4 +115,36 @@ it('reports string-disabled flags as off in about', function () {
 
     expect($about['plausible']['queued_tracking'])->toBe('OFF')
         ->and($about['plausible']['rate_limiting'])->toBe('events, sites');
+});
+
+it('refuses a mistyped rate-limit flag, naming the full key (strict config)', function (string $leaf) {
+    config()->set("plausible.rate_limits.stats.{$leaf}", 'disabled');
+    useHttpSnapshot('stats/aggregate');
+
+    expect(fn () => aggregateFor('localhost'))->toThrow(
+        InvalidConfigurationException::class,
+        "Configuration value [plausible.rate_limits.stats.{$leaf}] must be a boolean (true/false, 1/0, on/off or yes/no), [disabled] given.",
+    );
+})->with(['enabled', 'adaptive', 'per_site']);
+
+it('refuses a mistyped rate-limit switch in about, naming the full key (strict config)', function () {
+    config()->set('plausible.rate_limits.sites.enabled', 'disabled');
+
+    expect(fn () => Artisan::call('about', ['--only' => 'plausible']))->toThrow(
+        InvalidConfigurationException::class,
+        'Configuration value [plausible.rate_limits.sites.enabled] must be a boolean (true/false, 1/0, on/off or yes/no), [disabled] given.',
+    );
+});
+
+it('refuses a mistyped tracking queue switch (strict config)', function () {
+    config()->set('plausible.site', 'localhost');
+    config()->set('plausible.tracking.queue', 'disabled');
+    Route::middleware('plausible.track')->get('/tracked', fn () => 'ok');
+
+    $this->withoutExceptionHandling();
+
+    expect(fn () => $this->get('/tracked'))->toThrow(
+        InvalidConfigurationException::class,
+        'Configuration value [plausible.tracking.queue] must be a boolean (true/false, 1/0, on/off or yes/no), [disabled] given.',
+    );
 });

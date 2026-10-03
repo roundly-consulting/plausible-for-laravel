@@ -63,9 +63,13 @@ final class PlausibleServiceProvider extends PackageServiceProvider
         /** @var array<string, array<string, mixed>> $surfaces */
         $surfaces = config('plausible.rate_limits', []);
 
+        // Wrapped under its real key so a bad value is reported as
+        // `plausible.rate_limits.{surface}.enabled`, not as a bare `enabled`.
         $enabled = array_keys(array_filter(
             $surfaces,
-            static fn (array $surface): bool => Config::for($surface)->boolean('enabled', true),
+            static fn (array $surface, string $name): bool => Config::for(["plausible.rate_limits.{$name}.enabled" => $surface['enabled'] ?? null])
+                ->boolean("plausible.rate_limits.{$name}.enabled", true),
+            ARRAY_FILTER_USE_BOTH,
         ));
 
         return $enabled === [] ? 'OFF' : implode(', ', $enabled);

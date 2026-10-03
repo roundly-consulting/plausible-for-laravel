@@ -121,7 +121,7 @@ return [
 | `retry.times`           | `int`     | `0`                                | `PLAUSIBLE_RETRY_TIMES`      | Number of automatic retries on transient failures. `0` disables retries. |
 | `retry.sleep_ms`        | `int`     | `100`                              | `PLAUSIBLE_RETRY_SLEEP`      | Milliseconds to wait between retries. |
 | `rate_limits.*`         | `array`   | see [Rate limiting](#rate-limiting)| `PLAUSIBLE_*_RATELIMIT*`     | Per-surface client-side rate limiting for `stats`, `events`, and `sites`. |
-| `tracking.queue`        | `bool`    | `true`                             | `PLAUSIBLE_TRACKING_QUEUE`   | Queue captures from the middleware / `Trackable` trait so they never block the response. Accepts `true`/`false`, `on`/`off`, `yes`/`no`, `1`/`0`. |
+| `tracking.queue`        | `bool`    | `true`                             | `PLAUSIBLE_TRACKING_QUEUE`   | Queue captures from the middleware / `Trackable` trait so they never block the response. Accepts `true`/`false`, `on`/`off`, `yes`/`no`, `1`/`0`; anything else throws an `InvalidConfigurationException`. |
 | `tracking.user_agent`   | `string`  | `PlausibleForLaravel`              | `PLAUSIBLE_TRACKING_USER_AGENT` | User-agent used for server-side captures when no HTTP request is in scope. |
 | `tracking.ip_address`   | `string`  | `127.0.0.1`                        | `PLAUSIBLE_TRACKING_IP`      | IP used for server-side captures when no HTTP request is in scope. |
 | `script.domain`         | `?string` | `null`                             | `PLAUSIBLE_SCRIPT_DOMAIN`    | `data-domain` for the tracking script. Falls back to `site` when null. |
@@ -714,7 +714,8 @@ Configure each bucket under `plausible.rate_limits.{surface}`:
 Each key is backed by an env var, e.g. `PLAUSIBLE_STATS_RATELIMIT=600`,
 `PLAUSIBLE_EVENTS_RATELIMIT_PER=minute`, `PLAUSIBLE_SITES_RATELIMIT_ENABLED=false`,
 `PLAUSIBLE_STATS_RATELIMIT_PER_SITE=on`. The boolean keys accept `true`/`false`, `on`/`off`,
-`yes`/`no` and `1`/`0`. Stats defaults to Plausible's documented 600 requests/hour per key; Events
+`yes`/`no` and `1`/`0`; anything else throws an `InvalidConfigurationException` naming the key.
+Stats defaults to Plausible's documented 600 requests/hour per key; Events
 is a generous per-minute budget for high-volume ingestion; Sites is a low provisioning budget
 drawn from the same key. Self-hosted instances may set different numbers.
 
