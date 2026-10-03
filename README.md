@@ -124,18 +124,19 @@ return [
 | `tracking.queue`        | `bool`    | `true`                             | `PLAUSIBLE_TRACKING_QUEUE`   | Queue captures from the middleware / `Trackable` trait so they never block the response. Accepts `true`/`false`, `on`/`off`, `yes`/`no`, `1`/`0`; anything else throws an `InvalidConfigurationException`. |
 | `tracking.user_agent`   | `string`  | `PlausibleForLaravel`              | `PLAUSIBLE_TRACKING_USER_AGENT` | User-agent used for server-side captures when no HTTP request is in scope. |
 | `tracking.ip_address`   | `string`  | `127.0.0.1`                        | `PLAUSIBLE_TRACKING_IP`      | IP used for server-side captures when no HTTP request is in scope. |
-| `script.domain`         | `?string` | `null`                             | `PLAUSIBLE_SCRIPT_DOMAIN`    | `data-domain` for the tracking script. Uses `site` when null or empty. |
+| `script.domain`         | `?string` | `null`                             | `PLAUSIBLE_SCRIPT_DOMAIN`    | `data-domain` for the tracking script. Uses `site` when not set (null or blank). |
 | `script.src`            | `string`  | `https://plausible.io/js/script.js`| `PLAUSIBLE_SCRIPT_SRC`       | URL of the hosted Plausible script (point at your self-hosted host or a script variant). |
 
 A missing `url` throws `RoundlyConsulting\Plausible\Exceptions\MissingConfiguration` (a
 `PlausibleException`) on the first call, and a missing `key` on the first Stats or Sites call,
 rather than sending a broken request. Event capture works without a key.
 
-Every other setting is read strictly. A key you leave unset takes the default above; a value of the
-wrong shape throws an `InvalidConfigurationException` naming the key, and is never cast or replaced
-by the default: integers take an `int` or a whole-number string (`PLAUSIBLE_TIMEOUT=15` works,
-`five`, `1.5` or an empty value throw), and the user agent, IP address and script URL must be
-non-empty strings.
+Every other setting is read strictly. A key that is not set — left out, or blank such as
+`PLAUSIBLE_TIMEOUT=` — takes the default above (a blank `url`, `key` or `site` counts as missing);
+a value of the wrong shape throws an `InvalidConfigurationException` naming the key, and is never
+cast or replaced by the default: integers take an `int` or a whole-number string
+(`PLAUSIBLE_TIMEOUT=15` works, `five` or `1.5` throw), and the user agent, IP address and script
+URL must be strings.
 
 Set the essentials in your `.env`:
 
@@ -723,8 +724,8 @@ Each key is backed by an env var, e.g. `PLAUSIBLE_STATS_RATELIMIT=600`,
 `yes`/`no` and `1`/`0`; anything else throws an `InvalidConfigurationException` naming the key.
 The rest are just as strict: `per` must be one of `second`, `minute`, `hour` or `day` (a typo such
 as `hourly` throws instead of becoming hourly), `limit` is a whole number of at least `1`,
-`max_wait` and `jitter` are whole numbers of at least `0` (or unset), and `owner` is a non-empty
-string.
+`max_wait` and `jitter` are whole numbers of at least `0` (or unset), and `owner` is a string. A
+blank value (`PLAUSIBLE_STATS_RATELIMIT=`) is not set, so its default applies.
 Stats defaults to Plausible's documented 600 requests/hour per key; Events
 is a generous per-minute budget for high-volume ingestion; Sites is a low provisioning budget
 drawn from the same key. Self-hosted instances may set different numbers.
