@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use ReflectionClass;
 use RoundlyConsulting\PackageToolkit\Support\Config;
 use RoundlyConsulting\Plausible\Requests\Events\CaptureEventRequest;
+use RoundlyConsulting\Plausible\Support\PlausibleConfig;
 
 /**
  * Emits Plausible events on Eloquent lifecycle hooks. Configure per model with a
@@ -127,8 +128,8 @@ trait Trackable
         }
 
         return [
-            (string) config('plausible.tracking.user_agent', 'PlausibleForLaravel'),
-            (string) config('plausible.tracking.ip_address', '127.0.0.1'),
+            PlausibleConfig::trackingUserAgent(),
+            PlausibleConfig::trackingIpAddress(),
         ];
     }
 }

@@ -14,6 +14,7 @@ use RoundlyConsulting\Plausible\Repositories\SharedLinksRepository;
 use RoundlyConsulting\Plausible\Repositories\SitesRepository;
 use RoundlyConsulting\Plausible\Repositories\StatsRepository;
 use RoundlyConsulting\Plausible\Results\HealthResult;
+use RoundlyConsulting\Plausible\Support\PlausibleConfig;
 use RoundlyConsulting\Plausible\Support\ScriptTag;
 
 /**
@@ -110,7 +111,7 @@ class PlausibleManager
         try {
             $request = Http::baseUrl($url)
                 ->withToken($key)
-                ->timeout((int) config('plausible.timeout', 10));
+                ->timeout(PlausibleConfig::timeout());
 
             $response = $site !== null
                 ? $request->get('/api/v1/stats/realtime/visitors', ['site_id' => $site])

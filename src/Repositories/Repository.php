@@ -9,6 +9,7 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RoundlyConsulting\Plausible\Concerns\InteractsWithRateLimits;
 use RoundlyConsulting\Plausible\Exceptions\MissingConfiguration;
+use RoundlyConsulting\Plausible\Support\PlausibleConfig;
 
 abstract class Repository
 {
@@ -120,16 +121,16 @@ abstract class Repository
 
     protected function timeout(): int
     {
-        return (int) config('plausible.timeout', 10);
+        return PlausibleConfig::timeout();
     }
 
     protected function retryTimes(): int
     {
-        return (int) config('plausible.retry.times', 0);
+        return PlausibleConfig::retryTimes();
     }
 
     protected function retrySleep(): int
     {
-        return (int) config('plausible.retry.sleep_ms', 100);
+        return PlausibleConfig::retrySleep();
     }
 }

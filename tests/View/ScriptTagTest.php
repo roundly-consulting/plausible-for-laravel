@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Blade;
+use RoundlyConsulting\PackageToolkit\Exceptions\InvalidConfigurationException;
 use RoundlyConsulting\Plausible\Support\ScriptTag;
 
 beforeEach(fn () => config()->set('plausible.script.domain', 'scripted.test'));
@@ -39,8 +40,15 @@ it('uses the configured script src', function () {
     expect((string) ScriptTag::render())->toContain('src="https://analytics.example.com/js/script.js"');
 });
 
-it('falls back to the default src when the configured src is empty', function () {
+it('refuses an empty configured src instead of using the default (strict config)', function () {
     config()->set('plausible.script.src', '');
+
+    expect(fn () => ScriptTag::render())
+        ->toThrow(InvalidConfigurationException::class, '[plausible.script.src]');
+});
+
+it('uses the default src only when none is configured (strict config)', function () {
+    config()->set('plausible.script.src', null);
 
     expect((string) ScriptTag::render())->toContain('src="https://plausible.io/js/script.js"');
 });

@@ -31,6 +31,19 @@ it('ships exactly the config keys it reads', function (): void {
             'InteractsWithRateLimits.php' => [
                 '$config' => 'plausible.rate_limits.stats',
             ],
+            // `PlausibleConfig::rateLimit()` is handed the same block as `$config` and reads
+            // the strictly-validated leaves (per, limit, owner, max_wait, jitter) from it.
+            'PlausibleConfig.php' => [
+                '$config' => 'plausible.rate_limits.stats',
+            ],
+        ],
+
+        // Read through PlausibleConfig's strict string reader, which names each key as a
+        // literal argument rather than a `config()` token.
+        'extraReadPrefixes' => [
+            'plausible.script.src',
+            'plausible.tracking.ip_address',
+            'plausible.tracking.user_agent',
         ],
 
         // The events/sites twins of the eight leaves proven against `stats` above. They are

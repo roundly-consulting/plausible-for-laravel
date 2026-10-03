@@ -26,8 +26,7 @@ final class ScriptTag
             return new HtmlString('');
         }
 
-        $src = config('plausible.script.src', 'https://plausible.io/js/script.js');
-        $src = is_string($src) && $src !== '' ? $src : 'https://plausible.io/js/script.js';
+        $src = PlausibleConfig::scriptSrc();
 
         return new HtmlString(trim(app(ViewFactory::class)->make('plausible::components.script', [
             'domain' => $domain,
@@ -37,9 +36,9 @@ final class ScriptTag
 
     private static function configuredDomain(): ?string
     {
-        $domain = config('plausible.script.domain');
+        $domain = PlausibleConfig::scriptDomain();
 
-        if (is_string($domain) && $domain !== '') {
+        if ($domain !== null) {
             return $domain;
         }
 

@@ -13,6 +13,7 @@ use RoundlyConsulting\HttpClientRateLimits\Limit;
 use RoundlyConsulting\HttpClientRateLimits\RateLimit;
 use RoundlyConsulting\PackageToolkit\Support\Config;
 use RoundlyConsulting\Plausible\Exceptions\RateLimitExceeded;
+use RoundlyConsulting\Plausible\Support\PlausibleConfig;
 
 trait InteractsWithRateLimits
 {
@@ -37,24 +38,28 @@ trait InteractsWithRateLimits
             return null;
         }
 
-        $timespan = Timespan::tryFrom((string) ($config['per'] ?? 'hour')) ?? Timespan::Hour;
-        $owner = (string) ($config['owner'] ?? 'app');
+        [$per, $limit] = match ($surface) {
+            'events' => [Timespan::Minute, 6000],
+            'sites' => [Timespan::Hour, 60],
+            default => [Timespan::Hour, 600],
+        };
+        $settings = PlausibleConfig::rateLimit($section, $config, $per, $limit);
 
         $rateLimit = RateLimits::make(new Limit(
-            maxAttempts: (int) ($config['limit'] ?? 600),
-            timespan: $timespan,
-        ))->by($this->rateLimitKey($surface, $owner, $site, self::flag($config['per_site'] ?? null, $section.'.per_site', $surface === 'events')));
+            maxAttempts: $settings['limit'],
+            timespan: $settings['per'],
+        ))->by($this->rateLimitKey($surface, $settings['owner'], $site, self::flag($config['per_site'] ?? null, $section.'.per_site', $surface === 'events')));
 
         if (self::flag($config['adaptive'] ?? null, $section.'.adaptive', true)) {
             $rateLimit->adaptive();
         }
 
-        if (isset($config['max_wait']) && is_numeric($config['max_wait'])) {
-            $rateLimit->maxWait((int) $config['max_wait']);
+        if ($settings['max_wait'] !== null) {
+            $rateLimit->maxWait($settings['max_wait']);
         }
 
-        if (isset($config['jitter']) && is_numeric($config['jitter'])) {
-            $rateLimit->jitter((int) $config['jitter']);
+        if ($settings['jitter'] !== null) {
+            $rateLimit->jitter($settings['jitter']);
         }
 
         return $rateLimit;

@@ -40,11 +40,11 @@ return [
     |
     */
 
-    'timeout' => (int) env('PLAUSIBLE_TIMEOUT', 10),
+    'timeout' => env('PLAUSIBLE_TIMEOUT', 10),
 
     'retry' => [
-        'times' => (int) env('PLAUSIBLE_RETRY_TIMES', 0),
-        'sleep_ms' => (int) env('PLAUSIBLE_RETRY_SLEEP', 100),
+        'times' => env('PLAUSIBLE_RETRY_TIMES', 0),
+        'sleep_ms' => env('PLAUSIBLE_RETRY_SLEEP', 100),
     ],
 
     /*
@@ -83,7 +83,7 @@ return [
         'stats' => [
             'enabled' => env('PLAUSIBLE_STATS_RATELIMIT_ENABLED', true),
             'owner' => env('PLAUSIBLE_RATELIMIT_OWNER', 'app'),
-            'limit' => (int) env('PLAUSIBLE_STATS_RATELIMIT', 600),
+            'limit' => env('PLAUSIBLE_STATS_RATELIMIT', 600),
             'per' => env('PLAUSIBLE_STATS_RATELIMIT_PER', 'hour'),
             'adaptive' => env('PLAUSIBLE_STATS_RATELIMIT_ADAPTIVE', true),
             'max_wait' => env('PLAUSIBLE_STATS_RATELIMIT_MAX_WAIT'),
@@ -94,7 +94,7 @@ return [
         'events' => [
             'enabled' => env('PLAUSIBLE_EVENTS_RATELIMIT_ENABLED', true),
             'owner' => env('PLAUSIBLE_RATELIMIT_OWNER', 'app'),
-            'limit' => (int) env('PLAUSIBLE_EVENTS_RATELIMIT', 6000),
+            'limit' => env('PLAUSIBLE_EVENTS_RATELIMIT', 6000),
             'per' => env('PLAUSIBLE_EVENTS_RATELIMIT_PER', 'minute'),
             'adaptive' => env('PLAUSIBLE_EVENTS_RATELIMIT_ADAPTIVE', true),
             'max_wait' => env('PLAUSIBLE_EVENTS_RATELIMIT_MAX_WAIT'),
@@ -105,7 +105,7 @@ return [
         'sites' => [
             'enabled' => env('PLAUSIBLE_SITES_RATELIMIT_ENABLED', true),
             'owner' => env('PLAUSIBLE_RATELIMIT_OWNER', 'app'),
-            'limit' => (int) env('PLAUSIBLE_SITES_RATELIMIT', 60),
+            'limit' => env('PLAUSIBLE_SITES_RATELIMIT', 60),
             'per' => env('PLAUSIBLE_SITES_RATELIMIT_PER', 'hour'),
             'adaptive' => env('PLAUSIBLE_SITES_RATELIMIT_ADAPTIVE', true),
             'max_wait' => env('PLAUSIBLE_SITES_RATELIMIT_MAX_WAIT'),
