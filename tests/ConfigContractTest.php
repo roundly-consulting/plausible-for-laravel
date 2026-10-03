@@ -46,10 +46,12 @@ it('ships exactly the config keys it reads', function (): void {
             'plausible.tracking.user_agent',
         ],
 
-        // The events/sites twins of the eight leaves proven against `stats` above. They are
-        // read by the same lines through the same variable; only one section can be mapped.
+        // The events/sites twins of the leaves proven against `stats` above. They are read by
+        // the same lines through the same variable; only one section can be mapped. (`enabled`
+        // needs no twin: the provider reads it per surface by full key through the toolkit's
+        // `Config::for(…)->boolean("plausible.rate_limits.{$name}.enabled")`, which proves it
+        // for every surface.)
         'allowUnread' => [
-            'plausible.rate_limits.events.enabled',
             'plausible.rate_limits.events.owner',
             'plausible.rate_limits.events.limit',
             'plausible.rate_limits.events.per',
@@ -57,7 +59,6 @@ it('ships exactly the config keys it reads', function (): void {
             'plausible.rate_limits.events.max_wait',
             'plausible.rate_limits.events.jitter',
             'plausible.rate_limits.events.per_site',
-            'plausible.rate_limits.sites.enabled',
             'plausible.rate_limits.sites.owner',
             'plausible.rate_limits.sites.limit',
             'plausible.rate_limits.sites.per',
