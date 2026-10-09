@@ -6,6 +6,11 @@ All notable changes to `plausible-for-laravel` are documented in this file. The 
 
 ## Unreleased
 
+### Fixed
+
+- `events()->captureManyQueued()` no longer throws "does not use the Batchable trait" when the bus
+  is not faked: `CaptureEventJob` is batchable, and a job in a cancelled batch sends nothing.
+
 ## 1.0.0 - 2026-10-03
 
 Initial public release.

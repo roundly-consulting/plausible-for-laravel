@@ -42,6 +42,10 @@ final class FakeEventsRepository extends EventsRepository
         $this->fake->recordEvent($request);
     }
 
+    /**
+     * Records each event, then dispatches the batch for real (the method returns a
+     * {@see Batch}) — pair it with `Bus::fake()` in tests that should not touch the queue.
+     */
     public function captureManyQueued(iterable $events): Batch
     {
         $this->requireVisitor();
