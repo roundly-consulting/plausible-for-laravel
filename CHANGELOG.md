@@ -32,6 +32,8 @@ All notable changes to `plausible-for-laravel` are documented in this file. The 
 - **Behaviour change:** `plausible.retry.times` is the number of retries, as documented, so
   `times = 1` now retries once (two attempts). It used to count total attempts, so `1` never
   retried.
+- A breakdown, `cursor()` or `each()` without a property throws `MissingConfiguration::property()`
+  naming the missing property, instead of the "No site given" message.
 
 ## 1.0.0 - 2026-10-03
 

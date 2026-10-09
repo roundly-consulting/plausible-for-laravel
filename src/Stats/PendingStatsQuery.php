@@ -338,7 +338,7 @@ final class PendingStatsQuery
         $this->property = $property ?? $this->property;
 
         if ($this->property === null) {
-            throw MissingConfiguration::site();
+            throw MissingConfiguration::property();
         }
 
         $resolved = $this->property;
@@ -359,7 +359,7 @@ final class PendingStatsQuery
         $property ??= $this->property;
 
         if ($property === null) {
-            throw MissingConfiguration::site();
+            throw MissingConfiguration::property();
         }
 
         $page = 1;

@@ -29,4 +29,12 @@ final class MissingConfiguration extends PlausibleException
             '`PLAUSIBLE_SITE` (or `plausible.site`) to a default domain.'
         );
     }
+
+    public static function property(): self
+    {
+        return new self(
+            'No breakdown property given. Pass one to breakdown(), cursor() or each(), or set it '.
+            'with property(), e.g. Property::VisitSource.'
+        );
+    }
 }

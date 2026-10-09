@@ -166,3 +166,21 @@ it('sends the page size with every v2 offset and with an explicit perPage', func
     'an explicit perPage(100)' => [fn ($q) => $q->perPage(100), ['limit' => 100]],
     'no paging at all' => [fn ($q) => $q, null],
 ]);
+
+it('names the missing breakdown property, not the site', function (Closure $call) {
+    Http::fake();
+
+    try {
+        $call(plausible()->stats()->for('given.test'));
+        $this->fail('Expected a MissingConfiguration exception.');
+    } catch (MissingConfiguration $e) {
+        expect($e->getMessage())->toContain('property')
+            ->not->toContain('No site given');
+    }
+
+    Http::assertNothingSent();
+})->with([
+    'breakdown()' => [fn ($q) => $q->breakdown()],
+    'cursor()' => [fn ($q) => iterator_to_array($q->cursor())],
+    'each()' => [fn ($q) => $q->each(fn () => null)],
+]);
