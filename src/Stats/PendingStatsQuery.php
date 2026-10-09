@@ -163,9 +163,18 @@ final class PendingStatsQuery
         return [Value::of($operator), Value::of($field), $values];
     }
 
+    /**
+     * Any period but `custom` replaces an earlier `between()` / `since()` /
+     * `yesterday()` / `lastMonth()` range — the dates would otherwise override it.
+     */
     public function period(string|Period $period): self
     {
         $this->period = $period;
+
+        if (Value::of($period) !== Period::Custom->value) {
+            $this->start = null;
+            $this->end = null;
+        }
 
         return $this;
     }

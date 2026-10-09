@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use RoundlyConsulting\Plausible\Enums\Dimension;
 use RoundlyConsulting\Plausible\Enums\Interval;
@@ -183,4 +184,41 @@ it('names the missing breakdown property, not the site', function (Closure $call
     'breakdown()' => [fn ($q) => $q->breakdown()],
     'cursor()' => [fn ($q) => iterator_to_array($q->cursor())],
     'each()' => [fn ($q) => $q->each(fn () => null)],
+]);
+
+it('drops an earlier date range when a relative period follows it', function (Closure $range) {
+    useHttpSnapshot('stats/aggregate');
+
+    $range(plausible()->stats()->for('localhost'))->last7Days()->aggregate();
+
+    Http::assertSent(fn ($request) => $request['period'] === '7d'
+        && ! array_key_exists('date', $request->data()));
+})->with([
+    'between()' => [fn ($q) => $q->between(Carbon::parse('2026-01-01'), Carbon::parse('2026-01-31'))],
+    'yesterday()' => [fn ($q) => $q->yesterday()],
+    'lastMonth()' => [fn ($q) => $q->lastMonth()],
+    'since()' => [fn ($q) => $q->since(Carbon::parse('2026-01-01'))],
+]);
+
+it('drops an earlier date range on the v2 run() terminal too', function () {
+    useHttpSnapshot('stats/query');
+
+    plausible()->stats()->for('localhost')
+        ->between(Carbon::parse('2026-01-01'), Carbon::parse('2026-01-31'))
+        ->period(Period::SevenDays)
+        ->run();
+
+    Http::assertSent(fn ($request) => $request['date_range'] === '7d');
+});
+
+it('keeps the date range when it follows a period, or the period is custom', function (Closure $build) {
+    useHttpSnapshot('stats/aggregate');
+
+    $build(plausible()->stats()->for('localhost'))->aggregate();
+
+    Http::assertSent(fn ($request) => $request['period'] === 'custom'
+        && $request['date'] === '2026-01-01,2026-01-31');
+})->with([
+    'period() then between()' => [fn ($q) => $q->period('7d')->between(Carbon::parse('2026-01-01'), Carbon::parse('2026-01-31'))],
+    'between() then period(custom)' => [fn ($q) => $q->between(Carbon::parse('2026-01-01'), Carbon::parse('2026-01-31'))->period(Period::Custom)],
 ]);

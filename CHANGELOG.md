@@ -36,6 +36,9 @@ All notable changes to `plausible-for-laravel` are documented in this file. The 
   naming the missing property, instead of the "No site given" message.
 - `cursor()` and `each()` no longer leave the builder on the last page they fetched, so a later
   `breakdown()` on the same builder fetches its own `page()` again.
+- `period()` (and the relative shortcuts such as `last7Days()`) after `between()`, `since()`,
+  `yesterday()` or `lastMonth()` replaces the earlier range. v1 used to send both (a 400), and
+  `run()` silently kept the old dates.
 
 ## 1.0.0 - 2026-10-03
 
