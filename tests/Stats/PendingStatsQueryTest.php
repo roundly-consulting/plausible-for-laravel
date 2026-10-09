@@ -153,3 +153,16 @@ it('runs a v2 query through the builder', function () {
             && $body['pagination'] === ['limit' => 10, 'offset' => 10];
     });
 });
+
+// Plausible's v2 default page size is 10000, so a page of 100 must say so explicitly.
+it('sends the page size with every v2 offset and with an explicit perPage', function (Closure $build, ?array $pagination) {
+    useHttpSnapshot('stats/query');
+
+    $build(plausible()->stats()->for('localhost')->metrics(Metric::Visitors))->run();
+
+    Http::assertSent(fn ($request) => ($request->data()['pagination'] ?? null) === $pagination);
+})->with([
+    'page 2 at the default size' => [fn ($q) => $q->page(2), ['limit' => 100, 'offset' => 100]],
+    'an explicit perPage(100)' => [fn ($q) => $q->perPage(100), ['limit' => 100]],
+    'no paging at all' => [fn ($q) => $q, null],
+]);

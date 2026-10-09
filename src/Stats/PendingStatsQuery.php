@@ -69,7 +69,8 @@ final class PendingStatsQuery
 
     private int $page = 1;
 
-    private int $perPage = 100;
+    /** Null until set: the v2 `run()` then sends no page size unless it pages. */
+    private ?int $perPage = null;
 
     private DateTimeInterface|int|null $cacheTtl = null;
 
@@ -372,7 +373,7 @@ final class PendingStatsQuery
             }
 
             $page++;
-        } while ($rows !== [] && count($rows) >= $this->perPage);
+        } while ($rows !== [] && count($rows) >= $this->resolvePerPage());
     }
 
     /**
@@ -458,12 +459,18 @@ final class PendingStatsQuery
             start: $this->start,
             end: $this->end,
             page: $this->page,
-            perPage: $this->perPage,
+            perPage: $this->resolvePerPage(),
         );
     }
 
+    /**
+     * Plausible's v2 default page size is 10000, so the size is sent whenever it was set or
+     * an offset is sent — `page(2)` alone must still mean rows 101–200.
+     */
     private function queryRequest(): QueryRequest
     {
+        $offset = $this->page > 1 ? ($this->page - 1) * $this->resolvePerPage() : null;
+
         return new QueryRequest(
             site: $this->resolveSite(),
             metrics: $this->resolveMetrics(),
@@ -472,8 +479,8 @@ final class PendingStatsQuery
             filters: $this->arrayFilters,
             orderBy: $this->orderBy,
             include: $this->include,
-            limit: $this->perPage === 100 ? null : $this->perPage,
-            offset: $this->page > 1 ? ($this->page - 1) * $this->perPage : null,
+            limit: $this->perPage !== null || $offset !== null ? $this->resolvePerPage() : null,
+            offset: $offset,
         );
     }
 
@@ -530,6 +537,11 @@ final class PendingStatsQuery
         ];
 
         return 'plausible:stats:'.md5((string) json_encode($state));
+    }
+
+    private function resolvePerPage(): int
+    {
+        return $this->perPage ?? 100;
     }
 
     /**

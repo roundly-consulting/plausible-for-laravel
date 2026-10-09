@@ -14,6 +14,9 @@ All notable changes to `plausible-for-laravel` are documented in this file. The 
   gets a 400: the v1 API has no `year`, so it is sent as `period=custom` from 1 January through
   today. `allTime()` (an `all` period) on those terminals now throws `UnsupportedRequest`
   pointing to `run()` instead of sending a request Plausible rejects. `run()` is unchanged.
+- `run()` sends `pagination.limit` whenever it sends an offset or `perPage()` was called, so
+  `page(2)->run()` returns rows 101–200 and `perPage(100)->run()` at most 100 rows, instead of
+  falling back to Plausible's v2 default of 10000.
 
 ## 1.0.0 - 2026-10-03
 
