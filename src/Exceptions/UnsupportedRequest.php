@@ -18,6 +18,15 @@ final class UnsupportedRequest extends PlausibleException
         );
     }
 
+    public static function timeseriesInterval(string $interval): self
+    {
+        return new self(
+            "The v1 timeseries endpoint accepts only the `date` and `month` intervals, not [{$interval}]. ".
+            'For hourly or weekly buckets use run(), the Stats API v2, with Dimension::TimeHour or '.
+            'Dimension::TimeWeek.'
+        );
+    }
+
     public static function siteTimezone(): self
     {
         return new self(

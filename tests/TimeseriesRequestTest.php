@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Http;
+use RoundlyConsulting\Plausible\Enums\Interval;
+use RoundlyConsulting\Plausible\Exceptions\PlausibleException;
 use RoundlyConsulting\Plausible\Requests\Query;
 use RoundlyConsulting\Plausible\Requests\Stats\TimeseriesRequest;
 
@@ -76,7 +79,7 @@ it('returns query instance', function () {
         site: 'testing.tld',
         metrics: ['visitors', 'pageviews'],
         filters: ['visit:browser==Firefox', 'visit:country==FR'],
-        interval: 'hour',
+        interval: 'month',
         period: '1d',
         start: Carbon::parse('2023-02-01'),
         end: Carbon::parse('2023-02-02'),
@@ -91,7 +94,7 @@ it('returns query instance', function () {
             'site_id' => 'testing.tld',
             'metrics' => 'visitors,pageviews',
             'period' => '1d',
-            'interval' => 'hour',
+            'interval' => 'month',
             'filters' => 'visit:browser==Firefox;visit:country==FR',
             'date' => '2023-02-01,2023-02-02',
         ]);
@@ -114,3 +117,30 @@ it('returns query instance', function () {
             'date' => '2023-02-01',
         ]);
 });
+
+// Plausible's v1 timeseries accepts only `date` (alias `day`) and `month`; anything else is a 400.
+it('refuses the intervals the v1 timeseries endpoint rejects', function (Interval|string $interval) {
+    Http::fake();
+
+    expect(fn () => plausible()->stats()->for('localhost')->interval($interval)->timeseries())
+        ->toThrow(PlausibleException::class, 'run()');
+
+    Http::assertNothingSent();
+})->with([Interval::Minute, Interval::Hour, Interval::Week, 'hour']);
+
+it('points hourly and weekly buckets to the v2 time dimensions', function () {
+    expect(fn () => TimeseriesRequest::make('localhost', interval: Interval::Hour))
+        ->toThrow(PlausibleException::class, 'Dimension::TimeHour');
+});
+
+it('sends the intervals the v1 timeseries endpoint accepts', function (Interval|string $interval, string $wire) {
+    useHttpSnapshot('stats/timeseries');
+
+    plausible()->stats()->for('localhost')->interval($interval)->timeseries();
+
+    Http::assertSent(fn ($request) => $request['interval'] === $wire);
+})->with([
+    [Interval::Date, 'date'],
+    [Interval::Month, 'month'],
+    ['day', 'day'],
+]);

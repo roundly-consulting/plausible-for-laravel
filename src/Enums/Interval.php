@@ -7,7 +7,9 @@ namespace RoundlyConsulting\Plausible\Enums;
 use RoundlyConsulting\Enums\Helpers;
 
 /**
- * Bucket sizes for timeseries and breakdown requests.
+ * Bucket sizes for timeseries and breakdown requests. The v1 timeseries endpoint accepts
+ * only `Date` and `Month`; for hourly or weekly buckets use `run()` with
+ * {@see Dimension::TimeHour} / {@see Dimension::TimeWeek}.
  */
 enum Interval: string
 {

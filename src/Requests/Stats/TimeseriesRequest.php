@@ -8,10 +8,16 @@ use Illuminate\Support\Carbon;
 use RoundlyConsulting\Plausible\Enums\Interval;
 use RoundlyConsulting\Plausible\Enums\Metric;
 use RoundlyConsulting\Plausible\Enums\Period;
+use RoundlyConsulting\Plausible\Exceptions\UnsupportedRequest;
 use RoundlyConsulting\Plausible\Requests\Concerns\InteractsWithDateRange;
 use RoundlyConsulting\Plausible\Requests\Query;
 use RoundlyConsulting\Plausible\Support\Value;
 
+/**
+ * A v1 timeseries request. Plausible's v1 endpoint buckets only by `date` (alias `day`) or
+ * `month`; any other interval is refused when the request is built — hourly or weekly
+ * buckets need the v2 `run()` with a `time:*` dimension.
+ */
 final class TimeseriesRequest
 {
     use InteractsWithDateRange;
@@ -30,6 +36,10 @@ final class TimeseriesRequest
         public readonly ?Carbon $end = null,
     ) {
         $this->ensureV1Period();
+
+        if (! in_array(Value::of($interval), ['date', 'day', Interval::Month->value], true)) {
+            throw UnsupportedRequest::timeseriesInterval(Value::of($interval));
+        }
     }
 
     /**

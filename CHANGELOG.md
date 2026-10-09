@@ -39,6 +39,9 @@ All notable changes to `plausible-for-laravel` are documented in this file. The 
 - `period()` (and the relative shortcuts such as `last7Days()`) after `between()`, `since()`,
   `yesterday()` or `lastMonth()` replaces the earlier range. v1 used to send both (a 400), and
   `run()` silently kept the old dates.
+- `timeseries()` with an interval Plausible's v1 endpoint rejects (`Interval::Minute`, `Hour`,
+  `Week`) throws `UnsupportedRequest` pointing to `run()` with `Dimension::TimeHour` /
+  `Dimension::TimeWeek`, instead of sending a request that fails with a 400.
 
 ## 1.0.0 - 2026-10-03
 
