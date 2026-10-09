@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Plausible\Repositories;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RoundlyConsulting\Plausible\Concerns\InteractsWithRateLimits;
 use RoundlyConsulting\Plausible\Exceptions\MissingConfiguration;
 use RoundlyConsulting\Plausible\Support\PlausibleConfig;
+use Throwable;
 
 abstract class Repository
 {
@@ -36,6 +39,9 @@ abstract class Repository
     /**
      * The unauthenticated base client: instance URL, timeout and retries. The Events API
      * builds on this directly — Plausible's `/api/event` takes no API key.
+     *
+     * Retries never throw: the last failed response is returned, so the throttled surfaces
+     * hand it to the rate limiter (which reads a 429's `Retry-After`) before raising it.
      */
     protected function client(bool $throw = true): PendingRequest
     {
@@ -52,10 +58,28 @@ abstract class Repository
         }
 
         if ($this->retryTimes() > 0) {
-            $request->retry($this->retryTimes(), $this->retrySleep());
+            $request->retry(
+                $this->retryTimes(),
+                $this->retrySleep(),
+                fn (Throwable $exception): bool => $this->shouldRetry($exception),
+                throw: false,
+            );
         }
 
         return $request;
+    }
+
+    /**
+     * Retry only what a second try can fix: a failed connection or a 5xx. A 4xx — a 429
+     * included, which the rate limiter must see — is final.
+     */
+    protected function shouldRetry(Throwable $exception): bool
+    {
+        if ($exception instanceof ConnectionException) {
+            return true;
+        }
+
+        return $exception instanceof RequestException && $exception->response->serverError();
     }
 
     /**

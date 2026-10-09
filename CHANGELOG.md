@@ -24,6 +24,11 @@ All notable changes to `plausible-for-laravel` are documented in this file. The 
 - The `Trackable` trait uses `plausible.tracking.user_agent` / `ip_address` in the console and on
   queue workers, as documented. It used to send the console request's Symfony defaults
   (`User-Agent: Symfony`, `127.0.0.1`) instead.
+- **Behaviour change:** `plausible.retry.*` retries only failed connections and `5xx` responses.
+  A `4xx` (including a `429`) is no longer retried, and a timed-out `POST /api/event` is never
+  retried, since Plausible may already have recorded the event (a retry could count it, and its
+  revenue, twice). A `429`'s `Retry-After` now reaches the rate limiter with retries on, so the
+  next call waits.
 
 ## 1.0.0 - 2026-10-03
 

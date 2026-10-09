@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Plausible\Repositories;
 
 use Illuminate\Bus\Batch;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\Request;
@@ -14,6 +15,7 @@ use RoundlyConsulting\Plausible\Exceptions\MissingConfiguration;
 use RoundlyConsulting\Plausible\Exceptions\UniqueVisitorIdentifierRequired;
 use RoundlyConsulting\Plausible\Jobs\CaptureEventJob;
 use RoundlyConsulting\Plausible\Requests\Events\CaptureEventRequest;
+use Throwable;
 
 class EventsRepository extends Repository
 {
@@ -157,6 +159,21 @@ class EventsRepository extends Repository
         if (is_null($this->visitorUserAgent) || is_null($this->visitorIpAddress)) {
             throw UniqueVisitorIdentifierRequired::error();
         }
+    }
+
+    /**
+     * `POST /api/event` is not idempotent: after a timeout Plausible may already have
+     * recorded the event, so retrying could count it (and its revenue) twice. A connection
+     * that failed before the request went out, or a 5xx, is still retried.
+     */
+    protected function shouldRetry(Throwable $exception): bool
+    {
+        if ($exception instanceof ConnectionException
+            && preg_match('/cURL error 28:|timed out/i', $exception->getMessage()) === 1) {
+            return false;
+        }
+
+        return parent::shouldRetry($exception);
     }
 
     /**
