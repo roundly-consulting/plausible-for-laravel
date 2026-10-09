@@ -63,3 +63,36 @@ it('uses the fluent property for the cursor when none is passed', function () {
 it('throws from the cursor when no property is available', function () {
     iterator_to_array(plausible()->stats()->for('localhost')->cursor());
 })->throws(MissingConfiguration::class);
+
+it('leaves the builder on its own page after the cursor', function (int $page) {
+    Http::fake(['*' => Http::sequence()
+        ->push(['results' => [['page' => '/a', 'visitors' => 1]]], 200)
+        ->push(['results' => []], 200)
+        ->push(['results' => [['page' => '/a', 'visitors' => 1]]], 200)]);
+
+    $query = plausible()->stats()->for('localhost')->perPage(1)->page($page);
+
+    iterator_to_array($query->cursor(Property::EventPage));
+    $query->breakdown(Property::EventPage);
+
+    $sent = Http::recorded();
+
+    expect($sent)->toHaveCount(3)
+        ->and($sent[0][0]['page'])->toBe(1)
+        ->and($sent[1][0]['page'])->toBe(2)
+        ->and($sent[2][0]['page'])->toBe($page);
+})->with(['the default page' => [1], 'an explicit page' => [3]]);
+
+it('leaves the builder on its own page after each() stops early', function () {
+    Http::fake(['*' => Http::response(['results' => [['page' => '/a', 'visitors' => 1]]], 200)]);
+
+    $query = plausible()->stats()->for('localhost')->perPage(1);
+
+    $calls = 0;
+    $query->each(function () use (&$calls) {
+        return ++$calls < 2;
+    }, Property::EventPage);
+    $query->breakdown(Property::EventPage);
+
+    expect(Http::recorded()->last()[0]['page'])->toBe(1);
+});

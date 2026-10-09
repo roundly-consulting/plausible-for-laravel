@@ -34,6 +34,8 @@ All notable changes to `plausible-for-laravel` are documented in this file. The 
   retried.
 - A breakdown, `cursor()` or `each()` without a property throws `MissingConfiguration::property()`
   naming the missing property, instead of the "No site given" message.
+- `cursor()` and `each()` no longer leave the builder on the last page they fetched, so a later
+  `breakdown()` on the same builder fetches its own `page()` again.
 
 ## 1.0.0 - 2026-10-03
 

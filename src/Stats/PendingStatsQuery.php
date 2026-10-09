@@ -349,8 +349,9 @@ final class PendingStatsQuery
     }
 
     /**
-     * Lazily walk every page of a breakdown, yielding each row. Pages are
-     * fetched on demand so large breakdowns never load all at once.
+     * Lazily walk every page of a breakdown from page 1, yielding each row. Pages
+     * are fetched on demand so large breakdowns never load all at once. The
+     * builder's own `page()` is restored once the walk ends or stops.
      *
      * @return Generator<int, BreakdownRow>
      */
@@ -363,17 +364,22 @@ final class PendingStatsQuery
         }
 
         $page = 1;
+        $ownPage = $this->page;
 
-        do {
-            $this->page = $page;
-            $rows = $this->breakdown($property)->rows();
+        try {
+            do {
+                $this->page = $page;
+                $rows = $this->breakdown($property)->rows();
 
-            foreach ($rows as $row) {
-                yield $row;
-            }
+                foreach ($rows as $row) {
+                    yield $row;
+                }
 
-            $page++;
-        } while ($rows !== [] && count($rows) >= $this->resolvePerPage());
+                $page++;
+            } while ($rows !== [] && count($rows) >= $this->resolvePerPage());
+        } finally {
+            $this->page = $ownPage;
+        }
     }
 
     /**
