@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
@@ -108,3 +109,39 @@ it('uses the request visitor when available', function () {
 
     Http::assertSent(fn ($request) => $request->hasHeader('User-Agent', 'Browser/1.0'));
 });
+
+// A rolled-back write never happened, so it must not reach Plausible either.
+it('tracks nothing for a create that is rolled back', function (bool $queued) {
+    config()->set('plausible.tracking.queue', $queued);
+    Queue::fake();
+    Http::fake();
+
+    rescue(fn () => DB::transaction(function () {
+        TrackedOrder::create(['total' => 5]);
+
+        throw new RuntimeException('rolled back');
+    }), report: false);
+
+    expect(TrackedOrder::query()->count())->toBe(0);
+    Http::assertNothingSent();
+    Queue::assertNotPushed(CaptureEventJob::class);
+})->with(['sync' => [false], 'queued' => [true]]);
+
+it('tracks a create inside a transaction once it commits', function (bool $queued) {
+    config()->set('plausible.tracking.queue', $queued);
+    Queue::fake();
+    useHttpSnapshot('events/capture');
+
+    DB::transaction(function () {
+        TrackedOrder::create(['total' => 5]);
+
+        Http::assertNothingSent();
+        Queue::assertNotPushed(CaptureEventJob::class);
+    });
+
+    if ($queued) {
+        Queue::assertPushed(CaptureEventJob::class, 1);
+    } else {
+        Http::assertSentCount(1);
+    }
+})->with(['sync' => [false], 'queued' => [true]]);

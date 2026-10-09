@@ -42,6 +42,9 @@ All notable changes to `plausible-for-laravel` are documented in this file. The 
 - `timeseries()` with an interval Plausible's v1 endpoint rejects (`Interval::Minute`, `Hour`,
   `Week`) throws `UnsupportedRequest` pointing to `run()` with `Dimension::TimeHour` /
   `Dimension::TimeWeek`, instead of sending a request that fails with a 400.
+- **Behaviour change:** the `Trackable` trait sends (or queues) its events after the surrounding
+  database transaction commits, and not at all when it rolls back. A rolled-back create used to
+  be tracked anyway. Outside a transaction nothing changes.
 
 ## 1.0.0 - 2026-10-03
 

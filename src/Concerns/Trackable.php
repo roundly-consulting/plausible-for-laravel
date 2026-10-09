@@ -17,18 +17,25 @@ use RoundlyConsulting\Plausible\Support\PlausibleConfig;
  *     protected array $plausibleEvents = ['created' => 'Order Placed'];
  *
  * Override {@see plausibleEventProps()} / {@see plausibleEventUrl()} to customise
- * the payload. Captures are queued by default (see `plausible.tracking.queue`).
+ * the payload. Captures are queued by default (see `plausible.tracking.queue`), and
+ * inside a transaction they wait for the commit.
  *
  * @mixin Model
  */
 trait Trackable
 {
+    /**
+     * Each event is sent once the surrounding transaction commits (at once outside one):
+     * a rolled-back write never happened, so it is never tracked.
+     */
     public static function bootTrackable(): void
     {
         foreach (static::plausibleEventMap() as $hook => $eventName) {
             static::registerModelEvent($hook, static function (Model $model) use ($eventName): void {
                 if (method_exists($model, 'dispatchPlausibleEvent')) {
-                    $model->dispatchPlausibleEvent($eventName);
+                    $model->getConnection()->afterCommit(
+                        static fn () => $model->dispatchPlausibleEvent($eventName),
+                    );
                 }
             });
         }
