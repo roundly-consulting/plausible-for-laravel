@@ -48,6 +48,8 @@ All notable changes to `plausible-for-laravel` are documented in this file. The 
 - `Plausible::fake()` records a `capture()` (and `pageview()`, `event()`, `captureMany()`) only
   once it went out, so `assertEventCaptured()` no longer passes for a capture that throws in
   production (no visitor, a failed request).
+- `Plausible::fake()` switches the client-side rate limiter off, so a host test making more than
+  60 sites, goals or shared-link calls no longer sleeps for up to an hour.
 
 ## 1.0.0 - 2026-10-03
 

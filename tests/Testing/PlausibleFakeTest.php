@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Sleep;
 use PHPUnit\Framework\ExpectationFailedException;
 use RoundlyConsulting\Money\Money;
 use RoundlyConsulting\Plausible\DataTransferObjects\Revenue;
@@ -103,4 +104,20 @@ it('matches a captured revenue event the way the README shows', function () {
         fn (CaptureEventRequest $event) => $event->name === 'purchase'
             && $event->revenue?->amount->equals(Money::ofMajor('49', 'EUR')) === true,
     );
+});
+
+// The fake is offline, so pacing it against Plausible's quotas only stalls the host's tests:
+// the sites bucket allows 60 calls an hour, and call 61 would sleep for the rest of it.
+it('never paces calls through the client-side rate limiter', function () {
+    Sleep::fake();
+    Plausible::fake();
+
+    foreach (range(1, 61) as $call) {
+        Plausible::sites()->get('a.test');
+        Plausible::stats()->for('a.test')->aggregate();
+        Plausible::events()->setVisitor('Agent/1.0', '1.2.3.4')
+            ->capture(CaptureEventRequest::make(site: 'a.test', url: 'https://a.test/'));
+    }
+
+    Sleep::assertNeverSlept();
 });

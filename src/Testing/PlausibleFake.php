@@ -26,7 +26,8 @@ use RoundlyConsulting\Plausible\Support\PlausibleConfig;
  * manager, so constructor-injected managers, `plausible()`, the `Trackable` trait and the
  * `TrackPageview` middleware all reach it. Reads run against a stubbed HTTP layer; site
  * create/delete and goal delete send nothing and return canned typed results. Every
- * mutating call is recorded for the `assert*` methods below.
+ * mutating call is recorded for the `assert*` methods below. The client-side rate limiter
+ * is switched off (`plausible.rate_limits.*.enabled`), so no call is ever paced.
  *
  * It lives in src/ so host apps can use it; it depends only on PHPUnit's Assert,
  * always present in a Laravel app's dev dependencies.
@@ -68,6 +69,12 @@ final class PlausibleFake extends PlausibleManager
         if (PlausibleConfig::present(config('plausible.key')) === null) {
             config()->set('plausible.key', 'fake-key');
         }
+
+        // Offline, so nothing to pace: the real limiter would sleep a host's test for up to
+        // an hour once a bucket (sites: 60 calls an hour) runs out.
+        config()->set('plausible.rate_limits.stats.enabled', false);
+        config()->set('plausible.rate_limits.events.enabled', false);
+        config()->set('plausible.rate_limits.sites.enabled', false);
 
         Http::fake([
             rtrim((string) config('plausible.url'), '/').'/*' => Http::response(['results' => []], 200),
