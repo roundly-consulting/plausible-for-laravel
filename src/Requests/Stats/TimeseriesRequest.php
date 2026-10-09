@@ -28,7 +28,9 @@ final class TimeseriesRequest
         public readonly string|Period $period = '30d',
         public readonly ?Carbon $start = null,
         public readonly ?Carbon $end = null,
-    ) {}
+    ) {
+        $this->ensureV1Period();
+    }
 
     /**
      * @param  list<string|Metric>  $metrics
@@ -56,9 +58,9 @@ final class TimeseriesRequest
         return Query::make()
             ->set('site_id', $this->site)
             ->set('metrics', implode(',', Value::list($this->metrics)))
-            ->set('period', Value::of($this->period))
+            ->set('period', $this->v1Period())
             ->set('interval', Value::of($this->interval))
             ->when($this->hasFilters(), 'filters', implode(';', $this->filters))
-            ->when($this->usesCustomStartPoint(), 'date', fn (): string => $this->formatDateRange());
+            ->when($this->sendsV1Date(), 'date', fn (): string => $this->formatDateRange());
     }
 }

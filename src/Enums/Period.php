@@ -8,8 +8,10 @@ use Illuminate\Support\Str;
 use RoundlyConsulting\Enums\Helpers;
 
 /**
- * Relative time periods accepted by the legacy Stats API `period` parameter.
- * Use {@see Period::Custom} together with a start/end date for arbitrary ranges.
+ * Relative time periods for the Stats API. Use {@see Period::Custom} together with a
+ * start/end date for arbitrary ranges. The v1 endpoints (aggregate/timeseries/breakdown)
+ * have no `year` or `all`: `Year` is sent to them as a custom range from 1 January through
+ * today, and `All` works only with the v2 `run()` terminal.
  */
 enum Period: string
 {

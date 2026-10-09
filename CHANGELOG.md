@@ -10,6 +10,10 @@ All notable changes to `plausible-for-laravel` are documented in this file. The 
 
 - `events()->captureManyQueued()` no longer throws "does not use the Batchable trait" when the bus
   is not faked: `CaptureEventJob` is batchable, and a job in a cancelled batch sends nothing.
+- `thisYear()` (or a `year` period) on `aggregate()`, `timeseries()` and `breakdown()` no longer
+  gets a 400: the v1 API has no `year`, so it is sent as `period=custom` from 1 January through
+  today. `allTime()` (an `all` period) on those terminals now throws `UnsupportedRequest`
+  pointing to `run()` instead of sending a request Plausible rejects. `run()` is unchanged.
 
 ## 1.0.0 - 2026-10-03
 

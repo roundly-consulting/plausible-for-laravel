@@ -27,7 +27,9 @@ final class AggregateRequest
         public readonly ?Carbon $start = null,
         public readonly ?Carbon $end = null,
         public readonly bool $compare = false,
-    ) {}
+    ) {
+        $this->ensureV1Period();
+    }
 
     /**
      * @param  list<string|Metric>  $metrics
@@ -55,9 +57,9 @@ final class AggregateRequest
         return Query::make()
             ->set('site_id', $this->site)
             ->set('metrics', implode(',', Value::list($this->metrics)))
-            ->set('period', Value::of($this->period))
+            ->set('period', $this->v1Period())
             ->when($this->compare, 'compare', 'previous_period')
             ->when($this->hasFilters(), 'filters', implode(';', $this->filters))
-            ->when($this->usesCustomStartPoint(), 'date', fn (): string => $this->formatDateRange());
+            ->when($this->sendsV1Date(), 'date', fn (): string => $this->formatDateRange());
     }
 }

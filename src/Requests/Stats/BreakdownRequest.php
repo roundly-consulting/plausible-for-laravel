@@ -32,7 +32,9 @@ final class BreakdownRequest
         public readonly ?Carbon $end = null,
         public readonly int $page = 1,
         public readonly int $perPage = 100,
-    ) {}
+    ) {
+        $this->ensureV1Period();
+    }
 
     /**
      * @param  list<string|Metric>  $metrics
@@ -63,12 +65,12 @@ final class BreakdownRequest
         return Query::make()
             ->set('site_id', $this->site)
             ->set('metrics', implode(',', Value::list($this->metrics)))
-            ->set('period', Value::of($this->period))
+            ->set('period', $this->v1Period())
             ->set('interval', Value::of($this->interval))
             ->set('property', Value::of($this->property))
             ->set('limit', $this->perPage)
             ->set('page', $this->page)
             ->when($this->hasFilters(), 'filters', implode(';', $this->filters))
-            ->when($this->usesCustomStartPoint(), 'date', fn (): string => $this->formatDateRange());
+            ->when($this->sendsV1Date(), 'date', fn (): string => $this->formatDateRange());
     }
 }
