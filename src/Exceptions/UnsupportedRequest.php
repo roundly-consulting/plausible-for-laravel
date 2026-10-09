@@ -17,4 +17,21 @@ final class UnsupportedRequest extends PlausibleException
             'breakdown()). Use run(), the Stats API v2, which accepts allTime().'
         );
     }
+
+    public static function siteTimezone(): self
+    {
+        return new self(
+            'Plausible\'s Sites API cannot change a site\'s timezone: PUT /api/v1/sites/:site_id '.
+            'accepts only a new `domain` and ignores `timezone`. Change the timezone in the site '.
+            'settings on Plausible instead.'
+        );
+    }
+
+    public static function emptySiteUpdate(): self
+    {
+        return new self(
+            'A site update needs a new `domain`, the only field Plausible\'s '.
+            'PUT /api/v1/sites/:site_id changes.'
+        );
+    }
 }

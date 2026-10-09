@@ -17,6 +17,10 @@ All notable changes to `plausible-for-laravel` are documented in this file. The 
 - `run()` sends `pagination.limit` whenever it sends an offset or `perPage()` was called, so
   `page(2)->run()` returns rows 101–200 and `perPage(100)->run()` at most 100 rows, instead of
   falling back to Plausible's v2 default of 10000.
+- **Behaviour change:** `UpdateSiteRequest` throws `UnsupportedRequest` when `timezone` is set,
+  and when no new `domain` is given. Plausible's `PUT /api/v1/sites/:site_id` changes only the
+  domain: a timezone was silently dropped (or, on its own, answered with a 400). The `timezone`
+  parameter stays in the signature.
 
 ## 1.0.0 - 2026-10-03
 

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Http;
+use RoundlyConsulting\Plausible\Exceptions\PlausibleException;
 use RoundlyConsulting\Plausible\Requests\Sites\UpdateSiteRequest;
 use RoundlyConsulting\Plausible\Results\SiteResult;
 
@@ -49,7 +50,6 @@ it('updates a site', function () {
     $site = plausible()->sites()->update(UpdateSiteRequest::make(
         site: 'lorem.test',
         domain: 'dolor.test',
-        timezone: 'Europe/Bratislava',
     ));
 
     expect($site)->toBeInstanceOf(SiteResult::class)
@@ -58,9 +58,31 @@ it('updates a site', function () {
     Http::assertSent(
         fn ($request) => $request->method() === 'PUT'
             && str_ends_with($request->url(), '/api/v1/sites/lorem.test')
-            && $request['domain'] === 'dolor.test'
-            && $request['timezone'] === 'Europe/Bratislava',
+            && $request->data() === ['domain' => 'dolor.test'],
     );
+});
+
+// Plausible's PUT /api/v1/sites/:site_id keeps only `domain` (and the tracker script
+// configuration): a timezone is silently dropped, and a payload without a domain is a 400.
+it('refuses a timezone change, which the Sites API cannot apply', function (?string $domain) {
+    Http::fake();
+
+    expect(fn () => plausible()->sites()->update(UpdateSiteRequest::make(
+        site: 'lorem.test',
+        domain: $domain,
+        timezone: 'Europe/Bratislava',
+    )))->toThrow(PlausibleException::class, 'timezone');
+
+    Http::assertNothingSent();
+})->with(['timezone only' => [null], 'with a domain' => ['dolor.test']]);
+
+it('refuses an update without a new domain before sending', function () {
+    Http::fake();
+
+    expect(fn () => plausible()->sites()->update(UpdateSiteRequest::make(site: 'lorem.test')))
+        ->toThrow(PlausibleException::class, 'domain');
+
+    Http::assertNothingSent();
 });
 
 it('builds the site result from a non-array payload', function () {
