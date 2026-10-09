@@ -111,18 +111,23 @@ trait Trackable
 
     /**
      * Resolve the visitor identifiers: the current request's when available,
-     * otherwise the configured server-side defaults.
+     * otherwise the configured server-side defaults. In the console and on queue
+     * workers Laravel binds a route-less request whose Symfony defaults (User-Agent
+     * "Symfony", 127.0.0.1) are no visitor, so that one counts as no request.
      *
      * @return array{0: string, 1: string}
      */
     protected function plausibleVisitor(): array
     {
         $request = request();
-        $userAgent = $request->userAgent();
-        $ipAddress = $request->ip();
 
-        if (is_string($userAgent) && $userAgent !== '' && is_string($ipAddress) && $ipAddress !== '') {
-            return [$userAgent, $ipAddress];
+        if (! (app()->runningInConsole() && $request->route() === null)) {
+            $userAgent = $request->userAgent();
+            $ipAddress = $request->ip();
+
+            if (is_string($userAgent) && $userAgent !== '' && is_string($ipAddress) && $ipAddress !== '') {
+                return [$userAgent, $ipAddress];
+            }
         }
 
         return [

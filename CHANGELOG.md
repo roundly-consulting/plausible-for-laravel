@@ -21,6 +21,9 @@ All notable changes to `plausible-for-laravel` are documented in this file. The 
   and when no new `domain` is given. Plausible's `PUT /api/v1/sites/:site_id` changes only the
   domain: a timezone was silently dropped (or, on its own, answered with a 400). The `timezone`
   parameter stays in the signature.
+- The `Trackable` trait uses `plausible.tracking.user_agent` / `ip_address` in the console and on
+  queue workers, as documented. It used to send the console request's Symfony defaults
+  (`User-Agent: Symfony`, `127.0.0.1`) instead.
 
 ## 1.0.0 - 2026-10-03
 

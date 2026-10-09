@@ -80,7 +80,9 @@ it('uses default props and falls back to configured visitor without a request', 
     config()->set('plausible.tracking.ip_address', '10.0.0.1');
     useHttpSnapshot('events/capture');
 
-    app()->instance('request', new Request);
+    // What Laravel binds in the console and on queue workers (SetRequestForConsole): a
+    // route-less request whose Symfony defaults are User-Agent "Symfony" and 127.0.0.1.
+    app()->instance('request', Request::create((string) config('app.url'), 'GET', [], [], [], $_SERVER));
 
     SimpleTrackedModel::create();
 
