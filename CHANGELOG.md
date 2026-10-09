@@ -29,6 +29,9 @@ All notable changes to `plausible-for-laravel` are documented in this file. The 
   retried, since Plausible may already have recorded the event (a retry could count it, and its
   revenue, twice). A `429`'s `Retry-After` now reaches the rate limiter with retries on, so the
   next call waits.
+- **Behaviour change:** `plausible.retry.times` is the number of retries, as documented, so
+  `times = 1` now retries once (two attempts). It used to count total attempts, so `1` never
+  retried.
 
 ## 1.0.0 - 2026-10-03
 

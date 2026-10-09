@@ -58,8 +58,9 @@ abstract class Repository
         }
 
         if ($this->retryTimes() > 0) {
+            // `retry.times` counts retries; Laravel's retry() counts attempts.
             $request->retry(
-                $this->retryTimes(),
+                $this->retryTimes() + 1,
                 $this->retrySleep(),
                 fn (Throwable $exception): bool => $this->shouldRetry($exception),
                 throw: false,

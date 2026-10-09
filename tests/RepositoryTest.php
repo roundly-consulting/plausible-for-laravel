@@ -17,8 +17,9 @@ it('attaches the bearer token and base url to every request', function () {
     );
 });
 
+// `retry.times` counts retries, not attempts: 1 means one more try after the first.
 it('retries transient failures when configured', function () {
-    config()->set('plausible.retry.times', 2);
+    config()->set('plausible.retry.times', 1);
     config()->set('plausible.retry.sleep_ms', 0);
 
     Http::fakeSequence()
@@ -95,5 +96,15 @@ it('still throws the server error once the retries run out', function () {
     answerAttempts([503], $attempts);
 
     expect(fn () => plausible()->stats()->realtime('localhost'))->toThrow(RequestException::class)
-        ->and($attempts)->toBe(2);
+        ->and($attempts)->toBe(3);
+});
+
+it('sends once when retries are off', function () {
+    RateLimits::fake();
+    config()->set('plausible.retry.times', 0);
+    $attempts = 0;
+    answerAttempts([500, 200], $attempts);
+
+    expect(fn () => plausible()->stats()->realtime('localhost'))->toThrow(RequestException::class)
+        ->and($attempts)->toBe(1);
 });

@@ -36,7 +36,9 @@ return [
     |--------------------------------------------------------------------------
     |
     | Request timeout in seconds, and optional automatic retries for transient
-    | failures. Retries are off by default (times = 0).
+    | failures (failed connections and 5xx; a timed-out event capture is never
+    | retried). `times` is the number of retries after the first attempt; retries
+    | are off by default (times = 0).
     |
     */
 

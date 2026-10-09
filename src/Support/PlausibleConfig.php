@@ -25,7 +25,7 @@ final class PlausibleConfig
         return Config::integer('plausible.timeout', 10, min: 1);
     }
 
-    /** Automatic retries for transient failures; 0 = off. */
+    /** Automatic retries for transient failures, after the first attempt; 0 = off. */
     public static function retryTimes(): int
     {
         return Config::integer('plausible.retry.times', 0, min: 0);
