@@ -6,6 +6,20 @@ All notable changes to `plausible-for-laravel` are documented in this file. The 
 
 ## Unreleased
 
+## 1.1.0 - 2026-10-09
+
+### Added
+
+- `Exceptions\UnsupportedRequest` (a `PlausibleException`), thrown before anything is sent when a
+  request asks for something the target Plausible endpoint does not support.
+- `MissingConfiguration::property()` for a breakdown, `cursor()` or `each()` without a property.
+
+### Changed
+
+- Maintenance: `composer.json` `homepage` and `support.docs` point to the package docs on
+  roundly-consulting.com.
+- Documentation: the README hero uses an absolute image URL, so it renders on Packagist too.
+
 ### Fixed
 
 - `events()->captureManyQueued()` no longer throws "does not use the Batchable trait" when the bus
