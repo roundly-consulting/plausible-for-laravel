@@ -45,6 +45,9 @@ All notable changes to `plausible-for-laravel` are documented in this file. The 
 - **Behaviour change:** the `Trackable` trait sends (or queues) its events after the surrounding
   database transaction commits, and not at all when it rolls back. A rolled-back create used to
   be tracked anyway. Outside a transaction nothing changes.
+- `Plausible::fake()` records a `capture()` (and `pageview()`, `event()`, `captureMany()`) only
+  once it went out, so `assertEventCaptured()` no longer passes for a capture that throws in
+  production (no visitor, a failed request).
 
 ## 1.0.0 - 2026-10-03
 

@@ -12,9 +12,9 @@ use RoundlyConsulting\Plausible\Repositories\EventsRepository;
 use RoundlyConsulting\Plausible\Requests\Events\CaptureEventRequest;
 
 /**
- * Recording {@see EventsRepository} used by {@see PlausibleFake}. It records the
- * captured request for later assertions, then performs the (faked) HTTP call so
- * callers still receive a {@see Response}.
+ * Recording {@see EventsRepository} used by {@see PlausibleFake}. It performs the
+ * (faked) HTTP call so callers still receive a {@see Response}, then records the
+ * captured request for later assertions.
  *
  * @internal
  */
@@ -24,11 +24,17 @@ final class FakeEventsRepository extends EventsRepository
         private readonly PlausibleFake $fake,
     ) {}
 
+    /**
+     * Records only once the capture went out like the real client's — a capture without a
+     * visitor, or whose request fails, throws in production and records nothing here.
+     */
     public function capture(CaptureEventRequest $request): Response
     {
+        $response = parent::capture($request);
+
         $this->fake->recordEvent($request);
 
-        return parent::capture($request);
+        return $response;
     }
 
     /**
