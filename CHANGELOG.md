@@ -6,6 +6,11 @@ All notable changes to `plausible-for-laravel` are documented in this file. The 
 
 ## Unreleased
 
+### Changed
+
+- Maintenance: requires the latest roundly packages — package-toolkit `^1.3.0`, enums `^1.1.0`,
+  http-client-rate-limits `^1.1.0`, money `^1.0.1`; dev: testing `^1.2.1`.
+
 ## 1.1.0 - 2026-10-09
 
 ### Added
